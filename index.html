@@ -472,44 +472,30 @@ const IC = {
 const TCOL = {web:'#10b981',fichier:'#8b5cf6',note:'#f59e0b',action:'#3b82f6'};
 const PORD = {Critique:0,Haute:1,Moyenne:2,Basse:3};
 /* ══════════════════════════════════════════════
-   GRIST INIT — attendre onOptions OBLIGATOIREMENT
-   avant tout appel à l'API
+   GRIST INIT
 ══════════════════════════════════════════════ */
 let TABLE_ITEM      = 'item';
 let TABLE_DOSSIER   = 'dossier';
 let TABLE_CATEGORIE = 'categorie';
-let accessGranted   = false;
 
-// grist.ready() déclare les permissions requises.
-// Grist appellera onOptions() UNE FOIS que l'accès sera confirmé.
-// NE PAS appeler loadAll() avant ce callback.
+// Déclare les permissions et déclenche le chargement dès que Grist répond
 grist.ready({ requiredAccess: 'full' });
 
-grist.onOptions(function(opts, interaction) {
-  // Récupérer le niveau d'accès réel
-  const level = interaction && interaction.access_level ? interaction.access_level : 'none';
-  accessGranted = (level === 'full');
-
-  // Récupérer les noms de tables sauvegardés (si configurés)
+// Grist self-hosted (v1.1+) utilise onOptions pour transmettre l'accès
+// Grist cloud appelle aussi onOptions mais parfois avec un léger délai
+// Dans les deux cas : dès qu'on reçoit onOptions, on charge
+grist.onOptions(function(opts) {
   if (opts && opts.tableItem)    TABLE_ITEM      = opts.tableItem;
   if (opts && opts.tableDossier) TABLE_DOSSIER   = opts.tableDossier;
   if (opts && opts.tableCat)     TABLE_CATEGORIE = opts.tableCat;
-
-  if (accessGranted) {
-    loadAll();
-  } else {
-    document.getElementById('content').innerHTML = `<div class="empty">
-      <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><circle cx="12" cy="16" r=".5" fill="currentColor"/></svg>
-      <p>Accès insuffisant (niveau : <b>${level}</b>).<br><br>
-      Dans le panneau créateur du widget :<br>
-      <b>Accès → Accès complet au document</b><br>
-      puis cliquez <b>Enregistrer</b>.</p>
-    </div>`;
-  }
+  loadAll();
 });
 
+// Fallback : si onOptions n'est pas appelé dans les 2s, on tente quand même
+// (certaines versions de Grist self-hosted ne l'appellent pas)
+setTimeout(() => { if (!gReady) loadAll(); }, 2000);
+
 async function loadAll(){
-  if (!accessGranted) return; // sécurité supplémentaire
   try{
     const [ir,dr,cr] = await Promise.all([
       grist.docApi.fetchTable(TABLE_ITEM),
@@ -518,26 +504,34 @@ async function loadAll(){
     ]);
     S.cats = t2r(cr); S.dossiers = t2r(dr); S.items = t2r(ir);
     gReady = true; renderAll();
-  }catch(e){
+  } catch(e) {
     console.error('Grist loadAll error:', e);
     const msg = String(e && e.message ? e.message : e);
-    // Affiche un UI de config pour corriger les noms de tables
     let hint = '';
     if (msg.includes('KeyError') || msg.includes('Unknown table') || msg.includes('not found')) {
-      const tried = `<b>${TABLE_ITEM}</b>, <b>${TABLE_DOSSIER}</b>, <b>${TABLE_CATEGORIE}</b>`;
-      hint = `Tables introuvables (cherché : ${tried}).<br>
+      hint = `Tables introuvables (cherché&nbsp;: <b>${TABLE_ITEM}</b>, <b>${TABLE_DOSSIER}</b>, <b>${TABLE_CATEGORIE}</b>).<br>
         Vérifiez les noms exacts dans Grist (sensible à la casse).<br><br>
         <div style="display:flex;flex-direction:column;gap:8px;max-width:300px;margin:12px auto 0">
           <div><label class="fl">Table items</label><input class="fi" id="cfg-item" value="${TABLE_ITEM}"></div>
           <div><label class="fl">Table dossiers</label><input class="fi" id="cfg-dossier" value="${TABLE_DOSSIER}"></div>
           <div><label class="fl">Table catégories</label><input class="fi" id="cfg-cat" value="${TABLE_CATEGORIE}"></div>
-          <button class="btn btn-p" style="justify-content:center" onclick="applyConfig()">Appliquer</button>
+          <button class="btn btn-p" style="justify-content:center;margin-top:4px" onclick="applyConfig()">Appliquer</button>
         </div>`;
+    } else if (msg.includes('Access') || msg.includes('access') || msg.includes('none')) {
+      hint = `Accès refusé par Grist.<br><br>
+        Dans le panneau créateur (à droite) :<br>
+        <b>Accès → Accès complet au document</b><br>
+        puis <b>Enregistrer</b> (bouton vert).<br><br>
+        <button class="btn btn-g" onclick="loadAll()" style="margin-top:4px">↺ Réessayer</button>`;
     } else {
-      hint = `Erreur inattendue :<br><code style="font-size:11px;font-family:var(--fm)">${eh(msg)}</code>`;
+      hint = `<code style="font-size:11px;font-family:var(--fm)">${eh(msg)}</code><br><br>
+        <button class="btn btn-g" onclick="loadAll()" style="margin-top:4px">↺ Réessayer</button>`;
     }
     document.getElementById('content').innerHTML = `<div class="empty">
-      <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><circle cx="12" cy="16" r=".5" fill="currentColor"/></svg>
+      <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+        <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/>
+        <circle cx="12" cy="16" r=".5" fill="currentColor"/>
+      </svg>
       <p>${hint}</p>
     </div>`;
   }
@@ -556,22 +550,9 @@ function t2r(raw){
   return raw.id.map((id,i)=>{ const r={id}; Object.keys(raw).forEach(k=>{ r[k]=raw[k][i]; }); return r; });
 }
 
-// Rechargement sur changement Grist — SEULEMENT si accès accordé
-grist.onRecords(() => { if (accessGranted) loadAll(); });
+// Rechargement automatique sur modification dans Grist
+grist.onRecords(() => { if (gReady) loadAll(); });
 
-/* ══════════════════════════════════════════════
-   HELPERS
-══════════════════════════════════════════════ */
-const getDos = ref => S.dossiers.find(d=>d.id===ref||d.nom===ref)||null;
-const getCat = ref => S.cats.find(c=>c.id===ref||c.nom===ref)||null;
-const dosName = ref => { const d=getDos(ref); return d?d.nom:''; };
-const dosCatCol = ref => { const d=getDos(ref); if(!d) return '#444'; const c=getCat(d.categorie); return c?c.couleur||'#444':'#444'; };
-function fmtDate(v){
-  if(!v) return '';
-  const d=new Date(typeof v==='number'?v*1000:v);
-  if(isNaN(d)) return '';
-  return d.toLocaleDateString('fr-FR',{day:'2-digit',month:'short'});
-}
 function dcls(v){
   if(!v) return '';
   const d=new Date(typeof v==='number'?v*1000:v);
