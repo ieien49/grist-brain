@@ -570,6 +570,12 @@ function toast(msg){
 }
 
 /* ══════════════════════════════════════════════
+const getDos = ref => S.dossiers.find(d=>d.id===ref||d.nom===ref)||null;
+const getCat = ref => S.cats.find(c=>c.id===ref||c.nom===ref)||null;
+const dosName = ref => { const d=getDos(ref); return d?d.nom:""; };
+const dosCatCol = ref => { const d=getDos(ref); if(!d) return "#444"; const c=getCat(d.categorie); return c?c.couleur||"#444":"#444"; };
+const fmtDate = v => { if(!v) return ""; const d=new Date(typeof v==="number"?v*1000:v); if(isNaN(d)) return ""; return d.toLocaleDateString("fr-FR",{day:"2-digit",month:"short"}); };
+
    VIEW SWITCH
 ══════════════════════════════════════════════ */
 function switchView(v){
