@@ -11,27 +11,27 @@
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
-  --bg:#0d0d0d;
-  --s1:#141414;
-  --s2:#1a1a1a;
-  --s3:#212121;
-  --s4:#2a2a2a;
-  --b1:#222;
-  --b2:#2e2e2e;
-  --b3:#3a3a3a;
-  --t1:#ebebeb;
-  --t2:#999;
-  --t3:#555;
-  --t4:#333;
+  --bg:#f8f8f7;
+  --s1:#ffffff;
+  --s2:#f1f0ef;
+  --s3:#e8e7e5;
+  --s4:#dddcda;
+  --b1:#e8e7e5;
+  --b2:#d5d4d2;
+  --b3:#c0bfbc;
+  --t1:#1a1a1a;
+  --t2:#666560;
+  --t3:#999693;
+  --t4:#c0bfbc;
   --r:10px;
   --rsm:6px;
   --f:'DM Sans',system-ui,sans-serif;
   --fm:'DM Mono',monospace;
-  --crit:#f05252;
-  --high:#f59e0b;
+  --crit:#e03131;
+  --high:#e67700;
   --med:#3b82f6;
   --low:#6b7280;
-  --cweb:#10b981;
+  --cweb:#0ca678;
   --cfile:#8b5cf6;
   --cnote:#f59e0b;
   --cact:#3b82f6;
@@ -131,7 +131,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--f);background:var(--bg);
 #content{flex:1;overflow-y:auto;padding:0}
 ::-webkit-scrollbar{width:4px;height:4px}
 ::-webkit-scrollbar-track{background:transparent}
-::-webkit-scrollbar-thumb{background:var(--b2);border-radius:2px}
+::-webkit-scrollbar-thumb{background:var(--b3);border-radius:2px}
 
 /* ── DASHBOARD LAYOUT ────────────────────────── */
 #dashboard{
@@ -235,7 +235,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--f);background:var(--bg);
   transition:all .15s;cursor:pointer;background:transparent;
 }
 .tchk:hover{border-color:var(--t3)}
-.tchk.done{background:var(--t3);border-color:var(--t3)}
+.tchk.done{background:#6b7280;border-color:#6b7280}
 .tname{flex:1;font-size:12.5px;color:var(--t1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .tname.done{text-decoration:line-through;color:var(--t3)}
 .prio{font-size:10px;font-weight:500;padding:2px 6px;border-radius:8px;flex-shrink:0;font-family:var(--fm)}
@@ -339,13 +339,13 @@ html,body{height:100%;overflow:hidden;font-family:var(--f);background:var(--bg);
 /* ── LOADING ─────────────────────────────────── */
 .loading{display:flex;align-items:center;justify-content:center;height:100%;color:var(--t3);font-size:12px;gap:9px}
 @keyframes spin{to{transform:rotate(360deg)}}
-.spinner{width:15px;height:15px;border:2px solid var(--b2);border-top-color:var(--t3);border-radius:50%;animation:spin .8s linear infinite}
+.spinner{width:15px;height:15px;border:2px solid var(--b2);border-top-color:var(--b3);border-radius:50%;animation:spin .8s linear infinite}
 
 /* ── PROGRESS BAR ────────────────────────────── */
 .progress-wrap{margin-top:8px}
 .progress-lbl{display:flex;justify-content:space-between;font-size:10.5px;color:var(--t3);margin-bottom:4px}
-.progress-bar{height:4px;background:var(--s4);border-radius:2px;overflow:hidden}
-.progress-fill{height:100%;background:linear-gradient(90deg,#3b82f6,#10b981);border-radius:2px;transition:width .4s}
+.progress-bar{height:4px;background:var(--b2);border-radius:2px;overflow:hidden}
+.progress-fill{height:100%;background:linear-gradient(90deg,#3b82f6,#0ca678);border-radius:2px;transition:width .4s}
 
 /* ── MINI SECTION (knowledge panel in dashboard) ── */
 .mini-type-tabs{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:10px}
