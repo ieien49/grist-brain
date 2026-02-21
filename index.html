@@ -166,56 +166,46 @@ html,body{height:100%;overflow:hidden;font-family:var(--f);background:var(--bg);
 .stat-l{font-size:10px;color:var(--t3);text-transform:uppercase;letter-spacing:.4px}
 
 /* ── KNOWLEDGE CARDS ─────────────────────────── */
-.k-group{margin-bottom:22px}
+.k-group{margin-bottom:0}
 .g-hdr{
   display:flex;align-items:center;gap:8px;
-  margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid var(--b1);
+  padding:8px 14px;background:var(--s2);border-bottom:1px solid var(--b1);
+  position:sticky;top:0;z-index:1;
 }
-.g-title{font-size:11.5px;font-weight:600;color:var(--t2)}
-.g-badge{
-  font-size:10px;font-family:var(--fm);color:var(--t3);
-  background:var(--s2);padding:1px 5px;border-radius:8px;
+.g-title{font-size:11px;font-weight:600;color:var(--t2);text-transform:uppercase;letter-spacing:.5px}
+.g-badge{font-size:10px;font-family:var(--fm);color:var(--t3);background:var(--s3);padding:1px 5px;border-radius:8px;}
+.tag{font-size:10px;padding:2px 6px;border-radius:8px;background:var(--s3);color:var(--t3);font-family:var(--fm);white-space:nowrap;}
+/* TABLE */
+.ktable{width:100%;border-collapse:collapse;table-layout:fixed;}
+.ktable th{
+  font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;
+  color:var(--t3);padding:7px 14px;text-align:left;
+  background:var(--s2);border-bottom:1px solid var(--b1);
+  position:sticky;top:0;
 }
-.cards-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:8px}
-.kcard{
-  background:var(--s2);border:1px solid var(--b1);
-  border-radius:var(--r);padding:12px 14px;cursor:pointer;
-  transition:all .15s;position:relative;overflow:hidden;
+.ktable td{
+  padding:7px 14px;border-bottom:1px solid var(--b1);
+  font-size:12.5px;color:var(--t1);vertical-align:middle;
 }
-.kcard::after{
-  content:'';position:absolute;top:0;left:0;right:0;height:2px;
-  opacity:0;transition:opacity .15s;
+.krow{cursor:pointer;transition:background .1s;}
+.krow:hover{background:var(--s2);}
+.krow:hover .row-acts{display:flex;}
+.krow:last-child td{border-bottom:none;}
+.row-acts{display:none;align-items:center;gap:3px;}
+.type-pill{
+  display:inline-flex;align-items:center;gap:4px;
+  font-size:10px;font-family:var(--fm);padding:2px 7px;
+  border-radius:8px;font-weight:500;white-space:nowrap;
 }
-.kcard:hover{border-color:var(--b2);background:var(--s3)}
-.kcard:hover::after{opacity:1}
-.kcard.tweb::after{background:var(--cweb)}
-.kcard.tfich::after{background:var(--cfile)}
-.kcard.tnote::after{background:var(--cnote)}
-.c-hdr{display:flex;align-items:flex-start;gap:9px;margin-bottom:7px}
-.c-ico{
-  width:26px;height:26px;border-radius:6px;
-  display:flex;align-items:center;justify-content:center;flex-shrink:0;
-}
-.c-ico.tweb{background:rgba(16,185,129,.1)}
-.c-ico.tfich{background:rgba(139,92,246,.1)}
-.c-ico.tnote{background:rgba(245,158,11,.1)}
-.c-meta{flex:1;min-width:0}
-.c-name{
-  font-size:12.5px;font-weight:500;color:var(--t1);
-  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.3;
-}
-.c-sub{font-size:10.5px;color:var(--t3);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.c-desc{
-  font-size:11.5px;color:var(--t2);line-height:1.5;
-  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
-}
-.c-foot{display:flex;align-items:center;gap:5px;margin-top:8px;flex-wrap:wrap}
-.tag{
-  font-size:10px;padding:2px 6px;border-radius:8px;
-  background:var(--s4);color:var(--t3);font-family:var(--fm);white-space:nowrap;
-}
-.c-acts{display:none;position:absolute;top:8px;right:8px;gap:3px}
-.kcard:hover .c-acts{display:flex}
+.type-pill.tweb{background:rgba(12,166,120,.1);color:var(--cweb);}
+.type-pill.tfich{background:rgba(139,92,246,.1);color:var(--cfile);}
+.type-pill.tnote{background:rgba(245,158,11,.12);color:#b45309;}
+.col-name{width:35%}
+.col-type{width:90px}
+.col-dos{width:18%}
+.col-tags{width:20%}
+.col-desc{width:auto}
+.col-act{width:68px;text-align:right}
 
 /* ── TASKS ───────────────────────────────────── */
 .t-section{margin-bottom:20px}
@@ -609,7 +599,7 @@ function renderDashboard(c){
       <div class="panel-header">${IC.note}<span class="panel-title">Connaissances <span style="font-weight:400;color:var(--t3)">(${ki.length})</span></span>
         <div class="mini-type-tabs">${['all','web','fichier','note'].map(t=>`<span class="mtt ${S.dashKType===t?'active':''}" onclick="setDashKType('${t}')">${t==='all'?'Tout':t[0].toUpperCase()+t.slice(1)}</span>`).join('')}</div>
         <button class="ibt" onclick="openAddModal('knowledge')">${IC.plus}</button></div>
-      <div class="panel-body">${recentK.length===0?`<div class="empty"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/></svg><p>Aucune connaissance</p></div>`:`<div class="cards-grid">${recentK.map(i=>kCardHtml(i)).join('')}</div>`}</div>
+      <div class="panel-body">${recentK.length===0?`<div class="empty"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/></svg><p>Aucune connaissance</p></div>`:`<table class="ktable" style="font-size:12px"><thead><tr><th class="col-type">Type</th><th class="col-name">Nom</th><th class="col-dos">Dossier</th><th class="col-tags">Tags</th><th class="col-act"></th></tr></thead><tbody>${recentK.map(i=>kRowHtml(i)).join('')}</tbody></table>`}</div>
     </div>
     <div class="dash-panel">
       <div class="panel-header">${IC.action}<span class="panel-title">Tâches <span style="font-weight:400;color:var(--t3)">(${undone} actives)</span></span>
@@ -648,20 +638,40 @@ function renderKnowledge(c){
   else if(S.groupBy==='type'){ const m={}; items.forEach(i=>{ const k=i.type||'autre'; if(!m[k]) m[k]={label:k[0].toUpperCase()+k.slice(1),color:TCOL[k]||'#666',items:[]}; m[k].items.push(i); }); groups=Object.values(m); }
   else if(S.groupBy==='categorie'){ const m={}; items.forEach(i=>{ const d=getDos(i.dossier); const ct=d?getCat(d.categorie):null; const k=ct?ct.id:'__'; if(!m[k]) m[k]={label:ct?ct.nom:'Sans catégorie',color:ct?ct.couleur:'#444',items:[]}; m[k].items.push(i); }); groups=Object.values(m).sort((a,b)=>a.label.localeCompare(b.label)); }
   else{ groups=[{label:null,color:null,items}]; }
-  c.innerHTML=groups.map(g=>`<div class="k-group">${g.label!==null?`<div class="g-hdr">${g.color?`<span class="dot" style="background:${g.color}"></span>`:''}<span class="g-title">${eh(g.label)}</span><span class="g-badge">${g.items.length}</span></div>`:''}<div class="cards-grid">${g.items.map(i=>kCardHtml(i)).join('')}</div></div>`).join('');
+  const thead=`<thead><tr>
+    <th class="col-type">Type</th>
+    <th class="col-name">Nom</th>
+    <th class="col-dos">Dossier</th>
+    <th class="col-tags">Tags</th>
+    <th class="col-desc">Description</th>
+    <th class="col-act"></th>
+  </tr></thead>`;
+  if(S.groupBy==='none'){
+    c.innerHTML=`<table class="ktable">${thead}<tbody>${items.map(i=>kRowHtml(i)).join('')}</tbody></table>`;
+  } else {
+    c.innerHTML=groups.map(g=>`
+      <div class="k-group">
+        ${g.label!==null?`<div class="g-hdr">${g.color?`<span class="dot" style="background:${g.color}"></span>`:''}<span class="g-title">${eh(g.label)}</span><span class="g-badge">${g.items.length}</span></div>`:''}
+        <table class="ktable">${thead}<tbody>${g.items.map(i=>kRowHtml(i)).join('')}</tbody></table>
+      </div>`).join('');
+  }
 }
 
-function kCardHtml(item){
+function kRowHtml(item){
   const dn=dosName(item.dossier);
   const tags=(item.tags||'').split(',').map(t=>t.trim()).filter(Boolean);
   const hasLink=item.lien&&item.lien!=='';
   const tc={'web':'tweb','fichier':'tfich','note':'tnote'}[item.type]||'';
-  return `<div class="kcard ${tc}" onclick="openEditModal(${item.id})">
-    <div class="c-acts">${hasLink?`<a class="ibt" href="${ea(item.lien)}" target="_blank" onclick="event.stopPropagation()">${IC.link}</a>`:''}<div class="ibt" onclick="event.stopPropagation();openEditModal(${item.id})">${IC.edit}</div><div class="ibt" onclick="event.stopPropagation();delItem(${item.id})">${IC.trash}</div></div>
-    <div class="c-hdr"><div class="c-ico ${tc}" style="color:${TCOL[item.type]||'#666'}">${IC[item.type]||''}</div><div class="c-meta"><div class="c-name">${eh(item.nom||'Sans titre')}</div>${dn?`<div class="c-sub">${IC.folder} ${eh(dn)}</div>`:''}</div></div>
-    ${item.description?`<div class="c-desc">${eh(item.description)}</div>`:''}
-    ${tags.length||hasLink?`<div class="c-foot">${tags.slice(0,3).map(t=>`<span class="tag">${eh(t)}</span>`).join('')}${hasLink?`<span class="tag" style="color:var(--cweb)">↗ lien</span>`:''}</div>`:''}
-  </div>`;
+  const typeLabel={'web':'Web','fichier':'Fichier','note':'Note'}[item.type]||item.type;
+  const desc=item.description?eh(item.description).replace(/\n/g,' '):'';
+  return `<tr class="krow" onclick="openEditModal(${item.id})">
+    <td class="col-type"><span class="type-pill ${tc}">${IC[item.type]||''} ${typeLabel}</span></td>
+    <td class="col-name" style="font-weight:500">${eh(item.nom||'Sans titre')}${hasLink?` <a href="${ea(item.lien)}" target="_blank" onclick="event.stopPropagation()" style="color:var(--cweb);text-decoration:none;font-size:10px;margin-left:4px">↗</a>`:''}</td>
+    <td class="col-dos" style="color:var(--t2);font-size:12px">${dn?eh(dn):''}</td>
+    <td class="col-tags">${tags.slice(0,3).map(t=>`<span class="tag">${eh(t)}</span>`).join(' ')}</td>
+    <td class="col-desc" style="color:var(--t2);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:0">${desc}</td>
+    <td class="col-act"><div class="row-acts" style="justify-content:flex-end"><div class="ibt" onclick="event.stopPropagation();openEditModal(${item.id})">${IC.edit}</div><div class="ibt" onclick="event.stopPropagation();delItem(${item.id})">${IC.trash}</div></div></td>
+  </tr>`;
 }
 
 /* TASKS VIEW */
