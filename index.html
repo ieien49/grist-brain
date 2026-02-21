@@ -339,6 +339,21 @@ html,body{height:100%;overflow:hidden;font-family:var(--f);background:var(--bg);
 
 /* ── MINI SECTION (knowledge panel in dashboard) ── */
 .mini-type-tabs{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:10px}
+/* Sidebar sub-folders */
+.sb-folders-sub{overflow:hidden;transition:max-height .2s ease;max-height:0;}
+.sb-folders-sub.open{max-height:600px;}
+.sb-subfolder{
+  display:flex;align-items:center;gap:7px;
+  padding:5px 14px 5px 30px;cursor:pointer;
+  color:var(--t2);font-size:12px;transition:all .12s;
+}
+.sb-subfolder:hover{color:var(--t1);background:var(--s2)}
+.sb-subfolder.active{color:var(--t1);font-weight:500;background:var(--s2)}
+.sb-cat-chevron{
+  margin-left:auto;transition:transform .2s;flex-shrink:0;
+  color:var(--t3);
+}
+.sb-cat-chevron.open{transform:rotate(90deg)}
 .mtt{
   padding:3px 9px;border-radius:10px;font-size:11px;font-family:var(--fm);
   cursor:pointer;border:1px solid var(--b2);color:var(--t3);background:transparent;transition:all .12s;
@@ -384,11 +399,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--f);background:var(--bg);
       <div id="sb-cats"></div>
     </div>
 
-    <hr class="sb-div">
-    <div class="sb-section">
-      <div class="sb-lbl">Dossiers</div>
-      <div id="sb-folders"></div>
-    </div>
+
   </nav>
 
   <!-- MAIN -->
@@ -432,7 +443,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--f);background:var(--bg);
 
 <script>
 /* STATE */
-const S={view:'dashboard',items:[],dossiers:[],cats:[],fType:'all',fDossier:'all',fCat:'all',fPrio:'all',groupBy:'dossier',dashKType:'all',modalMode:null,editId:null,mType:'note'};
+const S={view:'dashboard',items:[],dossiers:[],cats:[],fType:'all',fDossier:'all',fCat:'all',fPrio:'all',groupBy:'dossier',dashKType:'all',modalMode:null,editId:null,mType:'note',expandedCat:null};
 let gReady=false;
 
 /* ICONS */
@@ -524,12 +535,22 @@ async function applyConfig(){
 /* VIEW SWITCH */
 function switchView(v){
   S.view=v; S.fType='all'; S.fDossier='all'; S.fCat='all'; S.fPrio='all';
+  if(v!=='knowledge') S.expandedCat=null;
   document.querySelectorAll('.sb-item[data-view]').forEach(el=>el.classList.toggle('active',el.dataset.view===v));
   document.getElementById('tb-title').textContent={dashboard:'Dashboard',knowledge:'Connaissances',tasks:'Tâches'}[v]||v;
   renderAll();
 }
-function selCat(id){ S.fCat=id; S.fDossier='all'; S.view='knowledge'; switchView('knowledge'); }
-function selFolder(id){ S.fDossier=id; S.fCat='all'; S.view='knowledge'; switchView('knowledge'); }
+function selCat(id){
+  if(S.expandedCat===id){ S.expandedCat=null; }
+  else { S.expandedCat=id; S.fCat=id; S.fDossier='all'; }
+  if(S.view!=='knowledge'){ S.view='knowledge'; document.querySelectorAll('.sb-item[data-view]').forEach(el=>el.classList.toggle('active',el.dataset.view==='knowledge')); document.getElementById('tb-title').textContent='Connaissances'; }
+  renderAll();
+}
+function selFolder(id){
+  S.fDossier=(S.fDossier===id?'all':id);
+  if(S.view!=='knowledge'){ S.view='knowledge'; document.querySelectorAll('.sb-item[data-view]').forEach(el=>el.classList.toggle('active',el.dataset.view==='knowledge')); document.getElementById('tb-title').textContent='Connaissances'; }
+  renderAll();
+}
 
 /* SIDEBAR */
 function renderSidebar(){
@@ -539,19 +560,34 @@ function renderSidebar(){
   document.getElementById('cnt-t').textContent=ti.filter(t=>!t.termine).length;
   const ce=document.getElementById('sb-cats'); ce.innerHTML='';
   S.cats.forEach(cat=>{
+    const catDossiers=S.dossiers.filter(d=>{ const c=getCat(d.categorie); return c&&c.id===cat.id; });
     const n=ki.filter(i=>{ const d=getDos(i.dossier); if(!d) return false; const c=getCat(d.categorie); return c&&c.id===cat.id; }).length;
-    const el=document.createElement('div');
-    el.className='sb-cat'+(S.fCat===cat.id?' active':'');
-    el.innerHTML=`<span class="dot" style="background:${cat.couleur||'#444'}"></span><span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${eh(cat.nom)}</span><span style="margin-left:auto;font-size:10px;font-family:var(--fm);color:var(--t3)">${n}</span>`;
-    el.onclick=()=>selCat(cat.id); ce.appendChild(el);
-  });
-  const fe=document.getElementById('sb-folders'); fe.innerHTML='';
-  S.dossiers.forEach(d=>{
-    const cat=getCat(d.categorie);
-    const el=document.createElement('div');
-    el.className='sb-cat'+(S.fDossier===d.id?' active':'');
-    el.innerHTML=`${cat?`<span class="dot" style="background:${cat.couleur||'#444'}"></span>`:IC.folder}<span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${eh(d.nom)}</span>`;
-    el.onclick=()=>selFolder(d.id); fe.appendChild(el);
+    const isExpanded=S.expandedCat===cat.id;
+    // Category row
+    const catEl=document.createElement('div');
+    catEl.className='sb-cat'+(S.fCat===cat.id?' active':'');
+    catEl.style.cssText='justify-content:flex-start';
+    catEl.innerHTML=`
+      <span class="dot" style="background:${cat.couleur||'#444'}"></span>
+      <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${eh(cat.nom)}</span>
+      <span style="font-size:10px;font-family:var(--fm);color:var(--t3);margin-right:4px">${n}</span>
+      ${catDossiers.length?`<svg class="sb-cat-chevron ${isExpanded?'open':''}" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>`:''}`;
+    catEl.onclick=()=>selCat(cat.id);
+    ce.appendChild(catEl);
+    // Sub-folders
+    if(catDossiers.length){
+      const subEl=document.createElement('div');
+      subEl.className='sb-folders-sub'+(isExpanded?' open':'');
+      catDossiers.forEach(d=>{
+        const itemCount=ki.filter(i=>i.dossier==d.id).length;
+        const dEl=document.createElement('div');
+        dEl.className='sb-subfolder'+(S.fDossier===d.id?' active':'');
+        dEl.innerHTML=`${IC.folder}<span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${eh(d.nom)}</span><span style="font-size:10px;font-family:var(--fm);color:var(--t3)">${itemCount}</span>`;
+        dEl.onclick=(e)=>{ e.stopPropagation(); selFolder(d.id); };
+        subEl.appendChild(dEl);
+      });
+      ce.appendChild(subEl);
+    }
   });
 }
 
