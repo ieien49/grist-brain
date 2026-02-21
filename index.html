@@ -441,23 +441,12 @@ html,body{height:100%;overflow:hidden;font-family:var(--f);background:var(--bg);
 </div>
 
 <script>
-/* ══════════════════════════════════════════════
-   STATE
-══════════════════════════════════════════════ */
-const S = {
-  view: 'dashboard',
-  items: [], dossiers: [], cats: [],
-  fType: 'all', fDossier: 'all', fCat: 'all', fPrio: 'all',
-  groupBy: 'dossier',
-  dashKType: 'all',
-  modalMode: null, editId: null, mType: 'note',
-};
-let gReady = false;
+/* STATE */
+const S={view:'dashboard',items:[],dossiers:[],cats:[],fType:'all',fDossier:'all',fCat:'all',fPrio:'all',groupBy:'dossier',dashKType:'all',modalMode:null,editId:null,mType:'note'};
+let gReady=false;
 
-/* ══════════════════════════════════════════════
-   ICONS
-══════════════════════════════════════════════ */
-const IC = {
+/* ICONS */
+const IC={
   web:`<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>`,
   fichier:`<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>`,
   note:`<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>`,
@@ -469,128 +458,90 @@ const IC = {
   link:`<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>`,
   plus:`<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>`,
 };
-const TCOL = {web:'#10b981',fichier:'#8b5cf6',note:'#f59e0b',action:'#3b82f6'};
-const PORD = {Critique:0,Haute:1,Moyenne:2,Basse:3};
-/* ══════════════════════════════════════════════
-   GRIST INIT
-══════════════════════════════════════════════ */
-let TABLE_ITEM      = 'Item';
-let TABLE_DOSSIER   = 'Dossier';
-let TABLE_CATEGORIE = 'Categorie';
+const TCOL={web:'#10b981',fichier:'#8b5cf6',note:'#f59e0b',action:'#3b82f6'};
+const PORD={Critique:0,Haute:1,Moyenne:2,Basse:3};
 
-// Déclare les permissions et déclenche le chargement dès que Grist répond
-grist.ready({ requiredAccess: 'full' });
+/* HELPERS — définis en premier, avant tout le reste */
+function getDos(ref){ return S.dossiers.find(d=>d.id===ref||d.nom===ref)||null; }
+function getCat(ref){ return S.cats.find(c=>c.id===ref||c.nom===ref)||null; }
+function dosName(ref){ const d=getDos(ref); return d?d.nom:''; }
+function dosCatCol(ref){ const d=getDos(ref); if(!d) return '#444'; const c=getCat(d.categorie); return c?c.couleur||'#444':'#444'; }
+function fmtDate(v){ if(!v) return ''; const d=new Date(typeof v==='number'?v*1000:v); if(isNaN(d)) return ''; return d.toLocaleDateString('fr-FR',{day:'2-digit',month:'short'}); }
+function dcls(v){ if(!v) return ''; const d=new Date(typeof v==='number'?v*1000:v); if(isNaN(d)) return ''; const diff=(d-new Date())/864e5; return diff<0?'ov':diff<3?'sn':''; }
+function pcls(p){ return {'Critique':'pc','Haute':'ph','Moyenne':'pm','Basse':'pl'}[p]||'pl'; }
+function eh(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function ea(s){ return String(s||'').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+function toast(msg){ const t=document.getElementById('toast'); document.getElementById('toast-msg').textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2400); }
+function t2r(raw){ if(!raw||!raw.id) return []; return raw.id.map((id,i)=>{ const r={id}; Object.keys(raw).forEach(k=>{ r[k]=raw[k][i]; }); return r; }); }
 
-// Grist self-hosted (v1.1+) utilise onOptions pour transmettre l'accès
-// Grist cloud appelle aussi onOptions mais parfois avec un léger délai
-// Dans les deux cas : dès qu'on reçoit onOptions, on charge
-grist.onOptions(function(opts) {
-  if (opts && opts.tableItem)    TABLE_ITEM      = opts.tableItem;
-  if (opts && opts.tableDossier) TABLE_DOSSIER   = opts.tableDossier;
-  if (opts && opts.tableCat)     TABLE_CATEGORIE = opts.tableCat;
+/* GRIST INIT */
+let TI='Item', TD='Dossier', TC='Categorie';
+
+grist.ready({ requiredAccess:'full' });
+
+grist.onOptions(function(opts){
+  if(opts&&opts.tableItem)    TI=opts.tableItem;
+  if(opts&&opts.tableDossier) TD=opts.tableDossier;
+  if(opts&&opts.tableCat)     TC=opts.tableCat;
   loadAll();
 });
 
-// Fallback : si onOptions n'est pas appelé dans les 2s, on tente quand même
-// (certaines versions de Grist self-hosted ne l'appellent pas)
-setTimeout(() => { if (!gReady) loadAll(); }, 2000);
+// Fallback si onOptions n'est pas appelé (Grist self-hosted)
+setTimeout(function(){ if(!gReady) loadAll(); }, 2000);
+
+grist.onRecords(function(){ if(gReady) loadAll(); });
 
 async function loadAll(){
   try{
-    const [ir,dr,cr] = await Promise.all([
-      grist.docApi.fetchTable(TABLE_ITEM),
-      grist.docApi.fetchTable(TABLE_DOSSIER),
-      grist.docApi.fetchTable(TABLE_CATEGORIE),
+    const [ir,dr,cr]=await Promise.all([
+      grist.docApi.fetchTable(TI),
+      grist.docApi.fetchTable(TD),
+      grist.docApi.fetchTable(TC),
     ]);
-    S.cats = t2r(cr); S.dossiers = t2r(dr); S.items = t2r(ir);
-    gReady = true; renderAll();
-  } catch(e) {
-    console.error('Grist loadAll error:', e);
-    const msg = String(e && e.message ? e.message : e);
-    let hint = '';
-    if (msg.includes('KeyError') || msg.includes('Unknown table') || msg.includes('not found')) {
-      hint = `Tables introuvables (cherché&nbsp;: <b>${TABLE_ITEM}</b>, <b>${TABLE_DOSSIER}</b>, <b>${TABLE_CATEGORIE}</b>).<br>
-        Vérifiez les noms exacts dans Grist (sensible à la casse).<br><br>
+    S.cats=t2r(cr); S.dossiers=t2r(dr); S.items=t2r(ir);
+    gReady=true; renderAll();
+  }catch(e){
+    console.error('Grist loadAll error:',e);
+    const msg=String(e&&e.message?e.message:e);
+    let hint='';
+    if(msg.includes('KeyError')||msg.includes('Unknown table')||msg.includes('not found')){
+      hint=`Tables introuvables (essayé&nbsp;: <b>${TI}</b>, <b>${TD}</b>, <b>${TC}</b>).<br>
+        Vérifiez les noms exacts dans Grist → <em>Données sources</em> (sensible à la casse).<br><br>
         <div style="display:flex;flex-direction:column;gap:8px;max-width:300px;margin:12px auto 0">
-          <div><label class="fl">Table items</label><input class="fi" id="cfg-item" value="${TABLE_ITEM}"></div>
-          <div><label class="fl">Table dossiers</label><input class="fi" id="cfg-dossier" value="${TABLE_DOSSIER}"></div>
-          <div><label class="fl">Table catégories</label><input class="fi" id="cfg-cat" value="${TABLE_CATEGORIE}"></div>
+          <div><label class="fl">Table items</label><input class="fi" id="cfg-item" value="${TI}"></div>
+          <div><label class="fl">Table dossiers</label><input class="fi" id="cfg-dossier" value="${TD}"></div>
+          <div><label class="fl">Table catégories</label><input class="fi" id="cfg-cat" value="${TC}"></div>
           <button class="btn btn-p" style="justify-content:center;margin-top:4px" onclick="applyConfig()">Appliquer</button>
         </div>`;
-    } else if (msg.includes('Access') || msg.includes('access') || msg.includes('none')) {
-      hint = `Accès refusé par Grist.<br><br>
-        Dans le panneau créateur (à droite) :<br>
-        <b>Accès → Accès complet au document</b><br>
-        puis <b>Enregistrer</b> (bouton vert).<br><br>
-        <button class="btn btn-g" onclick="loadAll()" style="margin-top:4px">↺ Réessayer</button>`;
     } else {
-      hint = `<code style="font-size:11px;font-family:var(--fm)">${eh(msg)}</code><br><br>
+      hint=`<code style="font-size:11px;font-family:var(--fm)">${eh(msg)}</code><br><br>
         <button class="btn btn-g" onclick="loadAll()" style="margin-top:4px">↺ Réessayer</button>`;
     }
-    document.getElementById('content').innerHTML = `<div class="empty">
-      <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-        <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/>
-        <circle cx="12" cy="16" r=".5" fill="currentColor"/>
-      </svg>
-      <p>${hint}</p>
-    </div>`;
+    document.getElementById('content').innerHTML=`<div class="empty">
+      <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><circle cx="12" cy="16" r=".5" fill="currentColor"/></svg>
+      <p>${hint}</p></div>`;
   }
 }
 
 async function applyConfig(){
-  TABLE_ITEM      = document.getElementById('cfg-item')?.value?.trim()    || TABLE_ITEM;
-  TABLE_DOSSIER   = document.getElementById('cfg-dossier')?.value?.trim() || TABLE_DOSSIER;
-  TABLE_CATEGORIE = document.getElementById('cfg-cat')?.value?.trim()     || TABLE_CATEGORIE;
-  try { await grist.setOptions({ tableItem: TABLE_ITEM, tableDossier: TABLE_DOSSIER, tableCat: TABLE_CATEGORIE }); } catch(_){}
+  TI=document.getElementById('cfg-item')?.value?.trim()||TI;
+  TD=document.getElementById('cfg-dossier')?.value?.trim()||TD;
+  TC=document.getElementById('cfg-cat')?.value?.trim()||TC;
+  try{ await grist.setOptions({tableItem:TI,tableDossier:TD,tableCat:TC}); }catch(_){}
   loadAll();
 }
 
-function t2r(raw){
-  if(!raw||!raw.id) return [];
-  return raw.id.map((id,i)=>{ const r={id}; Object.keys(raw).forEach(k=>{ r[k]=raw[k][i]; }); return r; });
-}
-
-// Rechargement automatique sur modification dans Grist
-grist.onRecords(() => { if (gReady) loadAll(); });
-
-function dcls(v){
-  if(!v) return '';
-  const d=new Date(typeof v==='number'?v*1000:v);
-  if(isNaN(d)) return '';
-  const diff=(d-new Date())/(864e5);
-  return diff<0?'ov':diff<3?'sn':'';
-}
-function pcls(p){ return {'Critique':'pc','Haute':'ph','Moyenne':'pm','Basse':'pl'}[p]||'pl'; }
-function eh(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
-function ea(s){ return String(s||'').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
-function toast(msg){
-  const t=document.getElementById('toast');
-  document.getElementById('toast-msg').textContent=msg;
-  t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2400);
-}
-
-/* ══════════════════════════════════════════════
-const getDos = ref => S.dossiers.find(d=>d.id===ref||d.nom===ref)||null;
-const getCat = ref => S.cats.find(c=>c.id===ref||c.nom===ref)||null;
-const dosName = ref => { const d=getDos(ref); return d?d.nom:""; };
-const dosCatCol = ref => { const d=getDos(ref); if(!d) return "#444"; const c=getCat(d.categorie); return c?c.couleur||"#444":"#444"; };
-const fmtDate = v => { if(!v) return ""; const d=new Date(typeof v==="number"?v*1000:v); if(isNaN(d)) return ""; return d.toLocaleDateString("fr-FR",{day:"2-digit",month:"short"}); };
-
-   VIEW SWITCH
-══════════════════════════════════════════════ */
+/* VIEW SWITCH */
 function switchView(v){
   S.view=v; S.fType='all'; S.fDossier='all'; S.fCat='all'; S.fPrio='all';
   document.querySelectorAll('.sb-item[data-view]').forEach(el=>el.classList.toggle('active',el.dataset.view===v));
-  const titles={dashboard:'Dashboard',knowledge:'Connaissances',tasks:'Tâches'};
-  document.getElementById('tb-title').textContent=titles[v]||v;
+  document.getElementById('tb-title').textContent={dashboard:'Dashboard',knowledge:'Connaissances',tasks:'Tâches'}[v]||v;
   renderAll();
 }
 function selCat(id){ S.fCat=id; S.fDossier='all'; S.view='knowledge'; switchView('knowledge'); }
 function selFolder(id){ S.fDossier=id; S.fCat='all'; S.view='knowledge'; switchView('knowledge'); }
 
-/* ══════════════════════════════════════════════
-   RENDER SIDEBAR
-══════════════════════════════════════════════ */
+/* SIDEBAR */
 function renderSidebar(){
   const ki=S.items.filter(i=>['web','fichier','note'].includes(i.type));
   const ti=S.items.filter(i=>i.type==='action');
@@ -614,45 +565,22 @@ function renderSidebar(){
   });
 }
 
-/* ══════════════════════════════════════════════
-   RENDER TOPBAR
-══════════════════════════════════════════════ */
+/* TOPBAR */
 function renderTopbar(){
   const el=document.getElementById('tb-filters');
-  if(S.view==='dashboard'){
-    el.innerHTML='';
-  } else if(S.view==='knowledge'){
-    el.innerHTML=`
-      <div class="seg">
-        ${['all','web','fichier','note'].map(t=>`<button class="seg-b ${S.fType===t?'active':''}" onclick="setF('fType','${t}')">${t==='all'?'Tout':t[0].toUpperCase()+t.slice(1)}</button>`).join('')}
-      </div>
-      <div class="flt"><select onchange="setF('fDossier',this.value)">
-        <option value="all">Tous les dossiers</option>
-        ${S.dossiers.map(d=>`<option value="${d.id}" ${S.fDossier==d.id?'selected':''}>${eh(d.nom)}</option>`).join('')}
-      </select></div>
-      <div class="flt"><select onchange="setF('groupBy',this.value)">
-        <option value="dossier" ${S.groupBy==='dossier'?'selected':''}>Grouper : Dossier</option>
-        <option value="type" ${S.groupBy==='type'?'selected':''}>Grouper : Type</option>
-        <option value="categorie" ${S.groupBy==='categorie'?'selected':''}>Grouper : Catégorie</option>
-        <option value="none" ${S.groupBy==='none'?'selected':''}>Sans groupe</option>
-      </select></div>`;
+  if(S.view==='dashboard'){ el.innerHTML=''; return; }
+  if(S.view==='knowledge'){
+    el.innerHTML=`<div class="seg">${['all','web','fichier','note'].map(t=>`<button class="seg-b ${S.fType===t?'active':''}" onclick="setF('fType','${t}')">${t==='all'?'Tout':t[0].toUpperCase()+t.slice(1)}</button>`).join('')}</div>
+    <div class="flt"><select onchange="setF('fDossier',this.value)"><option value="all">Tous les dossiers</option>${S.dossiers.map(d=>`<option value="${d.id}" ${S.fDossier==d.id?'selected':''}>${eh(d.nom)}</option>`).join('')}</select></div>
+    <div class="flt"><select onchange="setF('groupBy',this.value)"><option value="dossier" ${S.groupBy==='dossier'?'selected':''}>Grouper : Dossier</option><option value="type" ${S.groupBy==='type'?'selected':''}>Grouper : Type</option><option value="categorie" ${S.groupBy==='categorie'?'selected':''}>Grouper : Catégorie</option><option value="none" ${S.groupBy==='none'?'selected':''}>Sans groupe</option></select></div>`;
   } else {
-    el.innerHTML=`
-      <div class="flt"><select onchange="setF('fPrio',this.value)">
-        <option value="all">Toutes priorités</option>
-        ${['Critique','Haute','Moyenne','Basse'].map(p=>`<option value="${p}" ${S.fPrio===p?'selected':''}>${p}</option>`).join('')}
-      </select></div>
-      <div class="flt"><select onchange="setF('fDossier',this.value)">
-        <option value="all">Tous les dossiers</option>
-        ${S.dossiers.map(d=>`<option value="${d.id}" ${S.fDossier==d.id?'selected':''}>${eh(d.nom)}</option>`).join('')}
-      </select></div>`;
+    el.innerHTML=`<div class="flt"><select onchange="setF('fPrio',this.value)"><option value="all">Toutes priorités</option>${['Critique','Haute','Moyenne','Basse'].map(p=>`<option value="${p}" ${S.fPrio===p?'selected':''}>${p}</option>`).join('')}</select></div>
+    <div class="flt"><select onchange="setF('fDossier',this.value)"><option value="all">Tous les dossiers</option>${S.dossiers.map(d=>`<option value="${d.id}" ${S.fDossier==d.id?'selected':''}>${eh(d.nom)}</option>`).join('')}</select></div>`;
   }
 }
 function setF(k,v){ S[k]=v; renderAll(); }
 
-/* ══════════════════════════════════════════════
-   RENDER ALL
-══════════════════════════════════════════════ */
+/* RENDER ALL */
 function renderAll(){
   if(!gReady) return;
   renderSidebar(); renderTopbar();
@@ -660,12 +588,10 @@ function renderAll(){
   c.style.overflow='hidden'; c.style.padding='0';
   if(S.view==='dashboard') renderDashboard(c);
   else if(S.view==='knowledge'){ c.style.overflow='auto'; c.style.padding='20px'; renderKnowledge(c); }
-  else { c.style.overflow='auto'; c.style.padding='20px'; renderTasks(c); }
+  else{ c.style.overflow='auto'; c.style.padding='20px'; renderTasks(c); }
 }
 
-/* ══════════════════════════════════════════════
-   DASHBOARD
-══════════════════════════════════════════════ */
+/* DASHBOARD */
 function renderDashboard(c){
   const ki=S.items.filter(i=>['web','fichier','note'].includes(i.type));
   const ti=S.items.filter(i=>i.type==='action');
@@ -674,70 +600,43 @@ function renderDashboard(c){
   const crit=ti.filter(i=>i.priorite==='Critique'&&!i.termine).length;
   const pct=ti.length?Math.round(done/ti.length*100):0;
   const today=new Date().toDateString();
-  const todayCount=ti.filter(i=>{ if(!i.echeance||i.termine) return false; const d=new Date(typeof i.echeance==='number'?i.echeance*1000:i.echeance); return d.toDateString()===today; }).length;
+  const todayC=ti.filter(i=>{ if(!i.echeance||i.termine) return false; const d=new Date(typeof i.echeance==='number'?i.echeance*1000:i.echeance); return d.toDateString()===today; }).length;
   let dki=ki; if(S.dashKType!=='all') dki=ki.filter(i=>i.type===S.dashKType);
   const recentK=[...dki].reverse().slice(0,20);
   const undoneTasks=ti.filter(i=>!i.termine).sort((a,b)=>(PORD[a.priorite]??99)-(PORD[b.priorite]??99));
-
   c.innerHTML=`<div id="dashboard">
     <div class="dash-panel">
-      <div class="panel-header">
-        ${IC.note}
-        <span class="panel-title">Connaissances <span style="font-weight:400;color:var(--t3)">(${ki.length})</span></span>
-        <div class="mini-type-tabs">
-          ${['all','web','fichier','note'].map(t=>`<span class="mtt ${S.dashKType===t?'active':''}" onclick="setDashKType('${t}')">${t==='all'?'Tout':t[0].toUpperCase()+t.slice(1)}</span>`).join('')}
-        </div>
-        <button class="ibt" onclick="openAddModal('knowledge')" title="Ajouter">${IC.plus}</button>
-      </div>
-      <div class="panel-body">
-        ${recentK.length===0
-          ? `<div class="empty"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/></svg><p>Aucune connaissance</p></div>`
-          : `<div class="cards-grid">${recentK.map(i=>kCardHtml(i)).join('')}</div>`}
-      </div>
+      <div class="panel-header">${IC.note}<span class="panel-title">Connaissances <span style="font-weight:400;color:var(--t3)">(${ki.length})</span></span>
+        <div class="mini-type-tabs">${['all','web','fichier','note'].map(t=>`<span class="mtt ${S.dashKType===t?'active':''}" onclick="setDashKType('${t}')">${t==='all'?'Tout':t[0].toUpperCase()+t.slice(1)}</span>`).join('')}</div>
+        <button class="ibt" onclick="openAddModal('knowledge')">${IC.plus}</button></div>
+      <div class="panel-body">${recentK.length===0?`<div class="empty"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/></svg><p>Aucune connaissance</p></div>`:`<div class="cards-grid">${recentK.map(i=>kCardHtml(i)).join('')}</div>`}</div>
     </div>
     <div class="dash-panel">
-      <div class="panel-header">
-        ${IC.action}
-        <span class="panel-title">Tâches <span style="font-weight:400;color:var(--t3)">(${undone} actives)</span></span>
-        <button class="ibt" onclick="openAddModal('tasks')" title="Ajouter">${IC.plus}</button>
-      </div>
+      <div class="panel-header">${IC.action}<span class="panel-title">Tâches <span style="font-weight:400;color:var(--t3)">(${undone} actives)</span></span>
+        <button class="ibt" onclick="openAddModal('tasks')">${IC.plus}</button></div>
       <div class="panel-body">
         <div class="stats-row" style="grid-template-columns:repeat(2,1fr);margin-bottom:14px">
           <div class="stat-c"><div class="stat-v">${undone}</div><div class="stat-l">En cours</div></div>
           <div class="stat-c"><div class="stat-v" style="color:var(--crit)">${crit}</div><div class="stat-l">Critiques</div></div>
-          <div class="stat-c"><div class="stat-v" style="color:var(--high)">${todayCount}</div><div class="stat-l">Aujourd'hui</div></div>
+          <div class="stat-c"><div class="stat-v" style="color:var(--high)">${todayC}</div><div class="stat-l">Aujourd'hui</div></div>
           <div class="stat-c"><div class="stat-v">${pct}%</div><div class="stat-l">Terminées</div></div>
         </div>
-        <div class="progress-wrap" style="margin-bottom:16px">
-          <div class="progress-lbl"><span>${done} / ${ti.length} terminées</span></div>
-          <div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>
-        </div>
-        <div class="quick-add" onclick="focusQA()">
-          ${IC.plus}
-          <input id="qa-input" placeholder="Nouvelle tâche… (Entrée pour valider)" onkeydown="qaEnter(event)">
-        </div>
-        ${undoneTasks.length===0
-          ? `<div class="empty" style="padding:30px 0"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg><p>Aucune tâche active</p></div>`
-          : undoneTasks.map(i=>tRowHtml(i)).join('')}
+        <div class="progress-wrap" style="margin-bottom:16px"><div class="progress-lbl"><span>${done}/${ti.length} terminées</span></div><div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div></div>
+        <div class="quick-add" onclick="focusQA()">${IC.plus}<input id="qa-input" placeholder="Nouvelle tâche… (Entrée)" onkeydown="qaEnter(event)"></div>
+        ${undoneTasks.length===0?`<div class="empty" style="padding:30px 0"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg><p>Aucune tâche active</p></div>`:undoneTasks.map(i=>tRowHtml(i)).join('')}
       </div>
     </div>
   </div>`;
 }
-
 function setDashKType(t){ S.dashKType=t; renderAll(); }
 function focusQA(){ document.getElementById('qa-input')?.focus(); }
 async function qaEnter(e){
   if(e.key!=='Enter') return;
   const v=e.target.value.trim(); if(!v) return;
-  try{
-    await grist.docApi.applyUserActions([['AddRecord','item',null,{type:'action',nom:v,termine:false}]]);
-    e.target.value=''; toast('Tâche ajoutée ✓'); await loadAll();
-  }catch(err){ console.error(err); }
+  try{ await grist.docApi.applyUserActions([['AddRecord',TI,null,{type:'action',nom:v,termine:false}]]); e.target.value=''; toast('Tâche ajoutée ✓'); await loadAll(); }catch(err){ console.error(err); }
 }
 
-/* ══════════════════════════════════════════════
-   KNOWLEDGE (full view)
-══════════════════════════════════════════════ */
+/* KNOWLEDGE VIEW */
 function renderKnowledge(c){
   let items=S.items.filter(i=>['web','fichier','note'].includes(i.type));
   if(S.fType!=='all') items=items.filter(i=>i.type===S.fType);
@@ -745,23 +644,11 @@ function renderKnowledge(c){
   if(S.fCat!=='all') items=items.filter(i=>{ const d=getDos(i.dossier); if(!d) return false; const ct=getCat(d.categorie); return ct&&ct.id==S.fCat; });
   if(items.length===0){ c.innerHTML=`<div class="empty"><svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/></svg><p>Aucune connaissance.<br>Cliquez sur <b>Ajouter</b>.</p></div>`; return; }
   let groups=[];
-  if(S.groupBy==='dossier'){
-    const m={}; items.forEach(i=>{ const k=i.dossier||'__'; if(!m[k]) m[k]={label:dosName(i.dossier)||'Sans dossier',color:dosCatCol(i.dossier),items:[]}; m[k].items.push(i); });
-    groups=Object.values(m).sort((a,b)=>a.label.localeCompare(b.label));
-  } else if(S.groupBy==='type'){
-    const m={}; items.forEach(i=>{ const k=i.type||'autre'; if(!m[k]) m[k]={label:k[0].toUpperCase()+k.slice(1),color:TCOL[k]||'#666',items:[]}; m[k].items.push(i); });
-    groups=Object.values(m);
-  } else if(S.groupBy==='categorie'){
-    const m={}; items.forEach(i=>{ const d=getDos(i.dossier); const ct=d?getCat(d.categorie):null; const k=ct?ct.id:'__'; if(!m[k]) m[k]={label:ct?ct.nom:'Sans catégorie',color:ct?ct.couleur:'#444',items:[]}; m[k].items.push(i); });
-    groups=Object.values(m).sort((a,b)=>a.label.localeCompare(b.label));
-  } else {
-    groups=[{label:null,color:null,items}];
-  }
-  c.innerHTML=groups.map(g=>`
-    <div class="k-group">
-      ${g.label!==null?`<div class="g-hdr">${g.color?`<span class="dot" style="background:${g.color}"></span>`:''}<span class="g-title">${eh(g.label)}</span><span class="g-badge">${g.items.length}</span></div>`:''}
-      <div class="cards-grid">${g.items.map(i=>kCardHtml(i)).join('')}</div>
-    </div>`).join('');
+  if(S.groupBy==='dossier'){ const m={}; items.forEach(i=>{ const k=i.dossier||'__'; if(!m[k]) m[k]={label:dosName(i.dossier)||'Sans dossier',color:dosCatCol(i.dossier),items:[]}; m[k].items.push(i); }); groups=Object.values(m).sort((a,b)=>a.label.localeCompare(b.label)); }
+  else if(S.groupBy==='type'){ const m={}; items.forEach(i=>{ const k=i.type||'autre'; if(!m[k]) m[k]={label:k[0].toUpperCase()+k.slice(1),color:TCOL[k]||'#666',items:[]}; m[k].items.push(i); }); groups=Object.values(m); }
+  else if(S.groupBy==='categorie'){ const m={}; items.forEach(i=>{ const d=getDos(i.dossier); const ct=d?getCat(d.categorie):null; const k=ct?ct.id:'__'; if(!m[k]) m[k]={label:ct?ct.nom:'Sans catégorie',color:ct?ct.couleur:'#444',items:[]}; m[k].items.push(i); }); groups=Object.values(m).sort((a,b)=>a.label.localeCompare(b.label)); }
+  else{ groups=[{label:null,color:null,items}]; }
+  c.innerHTML=groups.map(g=>`<div class="k-group">${g.label!==null?`<div class="g-hdr">${g.color?`<span class="dot" style="background:${g.color}"></span>`:''}<span class="g-title">${eh(g.label)}</span><span class="g-badge">${g.items.length}</span></div>`:''}<div class="cards-grid">${g.items.map(i=>kCardHtml(i)).join('')}</div></div>`).join('');
 }
 
 function kCardHtml(item){
@@ -770,26 +657,14 @@ function kCardHtml(item){
   const hasLink=item.lien&&item.lien!=='';
   const tc={'web':'tweb','fichier':'tfich','note':'tnote'}[item.type]||'';
   return `<div class="kcard ${tc}" onclick="openEditModal(${item.id})">
-    <div class="c-acts">
-      ${hasLink?`<a class="ibt" href="${ea(item.lien)}" target="_blank" onclick="event.stopPropagation()">${IC.link}</a>`:''}
-      <div class="ibt" onclick="event.stopPropagation();openEditModal(${item.id})">${IC.edit}</div>
-      <div class="ibt" onclick="event.stopPropagation();delItem(${item.id})">${IC.trash}</div>
-    </div>
-    <div class="c-hdr">
-      <div class="c-ico ${tc}" style="color:${TCOL[item.type]||'#666'}">${IC[item.type]||''}</div>
-      <div class="c-meta">
-        <div class="c-name">${eh(item.nom||'Sans titre')}</div>
-        ${dn?`<div class="c-sub">${IC.folder} ${eh(dn)}</div>`:''}
-      </div>
-    </div>
+    <div class="c-acts">${hasLink?`<a class="ibt" href="${ea(item.lien)}" target="_blank" onclick="event.stopPropagation()">${IC.link}</a>`:''}<div class="ibt" onclick="event.stopPropagation();openEditModal(${item.id})">${IC.edit}</div><div class="ibt" onclick="event.stopPropagation();delItem(${item.id})">${IC.trash}</div></div>
+    <div class="c-hdr"><div class="c-ico ${tc}" style="color:${TCOL[item.type]||'#666'}">${IC[item.type]||''}</div><div class="c-meta"><div class="c-name">${eh(item.nom||'Sans titre')}</div>${dn?`<div class="c-sub">${IC.folder} ${eh(dn)}</div>`:''}</div></div>
     ${item.description?`<div class="c-desc">${eh(item.description)}</div>`:''}
     ${tags.length||hasLink?`<div class="c-foot">${tags.slice(0,3).map(t=>`<span class="tag">${eh(t)}</span>`).join('')}${hasLink?`<span class="tag" style="color:var(--cweb)">↗ lien</span>`:''}</div>`:''}
   </div>`;
 }
 
-/* ══════════════════════════════════════════════
-   TASKS (full view)
-══════════════════════════════════════════════ */
+/* TASKS VIEW */
 function renderTasks(c){
   let items=S.items.filter(i=>i.type==='action');
   if(S.fPrio!=='all') items=items.filter(i=>i.priorite===S.fPrio);
@@ -798,33 +673,16 @@ function renderTasks(c){
   const pct=items.length?Math.round(done/items.length*100):0;
   const today=new Date().toDateString();
   const tc=items.filter(i=>{ if(!i.echeance||i.termine) return false; const d=new Date(typeof i.echeance==='number'?i.echeance*1000:i.echeance); return d.toDateString()===today; }).length;
-  let html=`<div class="stats-row" style="margin-bottom:20px">
-    <div class="stat-c"><div class="stat-v">${items.length-done}</div><div class="stat-l">En cours</div></div>
-    <div class="stat-c"><div class="stat-v">${done}</div><div class="stat-l">Terminées</div></div>
-    <div class="stat-c"><div class="stat-v" style="color:var(--crit)">${items.filter(i=>i.priorite==='Critique'&&!i.termine).length}</div><div class="stat-l">Critiques</div></div>
-    <div class="stat-c"><div class="stat-v" style="color:var(--high)">${tc}</div><div class="stat-l">Aujourd'hui</div></div>
-  </div>
-  <div class="progress-wrap" style="margin-bottom:20px">
-    <div class="progress-lbl"><span>Progression</span><span>${pct}%</span></div>
-    <div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>
-  </div>
-  <div class="quick-add" onclick="focusQAFull()">
-    ${IC.plus}<input id="qa-full" placeholder="Nouvelle tâche… (Entrée)" onkeydown="qaEnterFull(event)">
-  </div>`;
+  let html=`<div class="stats-row" style="margin-bottom:20px"><div class="stat-c"><div class="stat-v">${items.length-done}</div><div class="stat-l">En cours</div></div><div class="stat-c"><div class="stat-v">${done}</div><div class="stat-l">Terminées</div></div><div class="stat-c"><div class="stat-v" style="color:var(--crit)">${items.filter(i=>i.priorite==='Critique'&&!i.termine).length}</div><div class="stat-l">Critiques</div></div><div class="stat-c"><div class="stat-v" style="color:var(--high)">${tc}</div><div class="stat-l">Aujourd'hui</div></div></div>
+  <div class="progress-wrap" style="margin-bottom:20px"><div class="progress-lbl"><span>Progression</span><span>${pct}%</span></div><div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div></div>
+  <div class="quick-add" onclick="focusQAFull()">${IC.plus}<input id="qa-full" placeholder="Nouvelle tâche… (Entrée)" onkeydown="qaEnterFull(event)"></div>`;
   if(items.length===0){ c.innerHTML=html+`<div class="empty"><svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg><p>Aucune tâche.</p></div>`; return; }
   const undone=items.filter(i=>!i.termine).sort((a,b)=>(PORD[a.priorite]??99)-(PORD[b.priorite]??99));
   const doneItems=items.filter(i=>i.termine);
   const pg={};
   undone.forEach(i=>{ const p=i.priorite||'Basse'; if(!pg[p]) pg[p]=[]; pg[p].push(i); });
-  ['Critique','Haute','Moyenne','Basse'].forEach(p=>{
-    if(!pg[p]?.length) return;
-    html+=`<div class="t-section"><div class="ts-hdr"><span class="ts-title">${p}</span><span class="ts-cnt">${pg[p].length}</span></div>`;
-    pg[p].forEach(i=>{ html+=tRowHtml(i); }); html+='</div>';
-  });
-  if(doneItems.length){
-    html+=`<div class="t-section"><div class="ts-hdr"><span class="ts-title">Terminées</span><span class="ts-cnt">${doneItems.length}</span></div>`;
-    doneItems.forEach(i=>{ html+=tRowHtml(i); }); html+='</div>';
-  }
+  ['Critique','Haute','Moyenne','Basse'].forEach(p=>{ if(!pg[p]?.length) return; html+=`<div class="t-section"><div class="ts-hdr"><span class="ts-title">${p}</span><span class="ts-cnt">${pg[p].length}</span></div>${pg[p].map(i=>tRowHtml(i)).join('')}</div>`; });
+  if(doneItems.length) html+=`<div class="t-section"><div class="ts-hdr"><span class="ts-title">Terminées</span><span class="ts-cnt">${doneItems.length}</span></div>${doneItems.map(i=>tRowHtml(i)).join('')}</div>`;
   c.innerHTML=html;
 }
 
@@ -833,16 +691,10 @@ function tRowHtml(item){
   const dc=dcls(item.echeance);
   return `<div class="trow" onclick="openEditModal(${item.id})">
     <div class="tchk ${item.termine?'done':''}" onclick="event.stopPropagation();toggleDone(${item.id},${!item.termine})">${item.termine?IC.check:''}</div>
-    <div style="flex:1;min-width:0">
-      <div class="tname ${item.termine?'done':''}">${eh(item.nom||'Sans titre')}</div>
-      ${dn?`<div style="font-size:10.5px;color:var(--t3)">${eh(dn)}</div>`:''}
-    </div>
+    <div style="flex:1;min-width:0"><div class="tname ${item.termine?'done':''}">${eh(item.nom||'Sans titre')}</div>${dn?`<div style="font-size:10.5px;color:var(--t3)">${eh(dn)}</div>`:''}</div>
     ${item.priorite?`<span class="prio ${pcls(item.priorite)}">${item.priorite}</span>`:''}
     ${item.echeance?`<span class="tdate ${dc}">${fmtDate(item.echeance)}</span>`:''}
-    <div class="t-acts">
-      <div class="ibt" onclick="event.stopPropagation();openEditModal(${item.id})">${IC.edit}</div>
-      <div class="ibt" onclick="event.stopPropagation();delItem(${item.id})">${IC.trash}</div>
-    </div>
+    <div class="t-acts"><div class="ibt" onclick="event.stopPropagation();openEditModal(${item.id})">${IC.edit}</div><div class="ibt" onclick="event.stopPropagation();delItem(${item.id})">${IC.trash}</div></div>
   </div>`;
 }
 
@@ -850,19 +702,13 @@ function focusQAFull(){ document.getElementById('qa-full')?.focus(); }
 async function qaEnterFull(e){
   if(e.key!=='Enter') return;
   const v=e.target.value.trim(); if(!v) return;
-  try{
-    await grist.docApi.applyUserActions([['AddRecord','item',null,{type:'action',nom:v,termine:false}]]);
-    e.target.value=''; toast('Tâche ajoutée ✓'); await loadAll();
-  }catch(err){ console.error(err); }
+  try{ await grist.docApi.applyUserActions([['AddRecord',TI,null,{type:'action',nom:v,termine:false}]]); e.target.value=''; toast('Tâche ajoutée ✓'); await loadAll(); }catch(err){ console.error(err); }
 }
 
-/* ══════════════════════════════════════════════
-   MODAL
-══════════════════════════════════════════════ */
+/* MODAL */
 function openAddModal(forceView){
   S.modalMode='add'; S.editId=null;
-  const v=forceView||S.view;
-  S.mType=(v==='tasks')?'action':'note';
+  S.mType=(forceView||S.view)==='tasks'?'action':'note';
   renderModal(); document.getElementById('ov').classList.add('open');
 }
 function openEditModal(id){
@@ -872,39 +718,24 @@ function openEditModal(id){
 }
 function closeModal(){ document.getElementById('ov').classList.remove('open'); }
 function handleOvClick(e){ if(e.target===document.getElementById('ov')) closeModal(); }
+function setMType(tp){ S.mType=tp; renderModal(); }
 
 function renderModal(){
   const isEdit=S.modalMode==='edit';
   const item=isEdit?S.items.find(i=>i.id===S.editId)||{}:{};
-  const t=S.mType; const isTask=(t==='action');
+  const t=S.mType; const isTask=t==='action';
   document.getElementById('m-title').innerHTML=`<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="${TCOL[t]||'currentColor'}" stroke-width="2">${(IC[t]||'').replace(/<svg[^>]*>|<\/svg>/g,'')}</svg>${isEdit?'Modifier':'Ajouter'} ${isTask?'une tâche':'une connaissance'}`;
   let h='';
-  if(!isTask){
-    h+=`<div class="fg"><label class="fl">Type</label><div class="type-sel">
-      ${['note','web','fichier'].map(tp=>`<div class="topt ${t===tp?'active':''}" onclick="setMType('${tp}')">${IC[tp]} ${tp[0].toUpperCase()+tp.slice(1)}</div>`).join('')}
-    </div></div>`;
-  }
+  if(!isTask) h+=`<div class="fg"><label class="fl">Type</label><div class="type-sel">${['note','web','fichier'].map(tp=>`<div class="topt ${t===tp?'active':''}" onclick="setMType('${tp}')">${IC[tp]} ${tp[0].toUpperCase()+tp.slice(1)}</div>`).join('')}</div></div>`;
   h+=`<div class="fg"><label class="fl">Nom *</label><input class="fi" id="f-nom" placeholder="Titre" value="${ea(item.nom||'')}"></div>`;
   if(!isTask) h+=`<div class="fg"><label class="fl">Description</label><textarea class="fta" id="f-desc" placeholder="Description…">${eh(item.description||'')}</textarea></div>`;
   if(t==='web') h+=`<div class="fg"><label class="fl">URL</label><input class="fi" id="f-lien" type="url" placeholder="https://…" value="${ea(item.lien||'')}"></div>`;
-  if(isTask) h+=`<div class="frow">
-    <div class="fg"><label class="fl">Priorité</label><select class="fs" id="f-prio">
-      ${['','Critique','Haute','Moyenne','Basse'].map(p=>`<option value="${p}" ${item.priorite===p?'selected':''}>${p||'—'}</option>`).join('')}
-    </select></div>
-    <div class="fg"><label class="fl">Échéance</label><input class="fi" id="f-ech" type="date" value="${toDateI(item.echeance)}"></div>
-  </div>
-  <div class="fg"><label class="fl" style="display:flex;align-items:center;gap:7px;cursor:pointer">
-    <input type="checkbox" id="f-done" ${item.termine?'checked':''} style="width:13px;height:13px;accent-color:var(--t1)"> Terminée
-  </label></div>`;
-  h+=`<div class="fg"><label class="fl">Dossier</label><select class="fs" id="f-dos">
-    <option value="">— Sans dossier —</option>
-    ${S.dossiers.map(d=>`<option value="${d.id}" ${item.dossier==d.id?'selected':''}>${eh(d.nom)}</option>`).join('')}
-  </select></div>`;
+  if(isTask) h+=`<div class="frow"><div class="fg"><label class="fl">Priorité</label><select class="fs" id="f-prio">${['','Critique','Haute','Moyenne','Basse'].map(p=>`<option value="${p}" ${item.priorite===p?'selected':''}>${p||'—'}</option>`).join('')}</select></div><div class="fg"><label class="fl">Échéance</label><input class="fi" id="f-ech" type="date" value="${toDateI(item.echeance)}"></div></div><div class="fg"><label class="fl" style="display:flex;align-items:center;gap:7px;cursor:pointer"><input type="checkbox" id="f-done" ${item.termine?'checked':''} style="width:13px;height:13px;accent-color:var(--t1)"> Terminée</label></div>`;
+  h+=`<div class="fg"><label class="fl">Dossier</label><select class="fs" id="f-dos"><option value="">— Sans dossier —</option>${S.dossiers.map(d=>`<option value="${d.id}" ${item.dossier==d.id?'selected':''}>${eh(d.nom)}</option>`).join('')}</select></div>`;
   if(!isTask) h+=`<div class="fg"><label class="fl">Tags (virgule)</label><input class="fi" id="f-tags" placeholder="tag1, tag2" value="${ea(item.tags||'')}"></div>`;
   document.getElementById('m-body').innerHTML=h;
 }
 
-function setMType(tp){ S.mType=tp; renderModal(); }
 function toDateI(v){ if(!v) return ''; const d=new Date(typeof v==='number'?v*1000:v); return isNaN(d)?'':d.toISOString().split('T')[0]; }
 function fromDateI(v){ if(!v) return null; return Math.floor(new Date(v).getTime()/1000); }
 
@@ -912,7 +743,7 @@ async function saveModal(){
   const nom=document.getElementById('f-nom')?.value?.trim();
   if(!nom){ alert('Le nom est requis.'); return; }
   const t=S.mType;
-  const clean={type:t, nom, termine:document.getElementById('f-done')?.checked||false};
+  const clean={type:t,nom,termine:document.getElementById('f-done')?.checked||false};
   const desc=document.getElementById('f-desc')?.value; if(desc) clean.description=desc;
   const lien=document.getElementById('f-lien')?.value; if(lien) clean.lien=lien;
   const prio=document.getElementById('f-prio')?.value; if(prio) clean.priorite=prio;
@@ -920,31 +751,19 @@ async function saveModal(){
   const dos=parseInt(document.getElementById('f-dos')?.value); if(dos) clean.dossier=dos;
   const tags=document.getElementById('f-tags')?.value; if(tags) clean.tags=tags;
   try{
-    if(S.modalMode==='add'){
-      await grist.docApi.applyUserActions([['AddRecord','item',null,clean]]);
-      toast('Élément ajouté ✓');
-    } else {
-      await grist.docApi.applyUserActions([['UpdateRecord','item',S.editId,clean]]);
-      toast('Modifications enregistrées ✓');
-    }
+    if(S.modalMode==='add'){ await grist.docApi.applyUserActions([['AddRecord',TI,null,clean]]); toast('Élément ajouté ✓'); }
+    else{ await grist.docApi.applyUserActions([['UpdateRecord',TI,S.editId,clean]]); toast('Modifications enregistrées ✓'); }
     closeModal(); await loadAll();
   }catch(e){ console.error(e); alert('Erreur : '+e.message); }
 }
 
 async function toggleDone(id,val){
-  try{
-    await grist.docApi.applyUserActions([['UpdateRecord','item',id,{termine:val}]]);
-    toast(val?'Tâche terminée ✓':'Tâche réouverte');
-    await loadAll();
-  }catch(e){ console.error(e); }
+  try{ await grist.docApi.applyUserActions([['UpdateRecord',TI,id,{termine:val}]]); toast(val?'Tâche terminée ✓':'Tâche réouverte'); await loadAll(); }catch(e){ console.error(e); }
 }
 
 async function delItem(id){
   if(!confirm('Supprimer cet élément ?')) return;
-  try{
-    await grist.docApi.applyUserActions([['RemoveRecord','item',id]]);
-    toast('Supprimé'); await loadAll();
-  }catch(e){ console.error(e); alert('Erreur : '+e.message); }
+  try{ await grist.docApi.applyUserActions([['RemoveRecord',TI,id]]); toast('Supprimé'); await loadAll(); }catch(e){ console.error(e); alert('Erreur : '+e.message); }
 }
 </script>
 </body>
