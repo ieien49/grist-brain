@@ -1,0 +1,964 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<script src="https://docs.getgrist.com/grist-plugin-api.js"></script>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Second Cerveau</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0d0d0d;
+  --s1:#141414;
+  --s2:#1a1a1a;
+  --s3:#212121;
+  --s4:#2a2a2a;
+  --b1:#222;
+  --b2:#2e2e2e;
+  --b3:#3a3a3a;
+  --t1:#ebebeb;
+  --t2:#999;
+  --t3:#555;
+  --t4:#333;
+  --r:10px;
+  --rsm:6px;
+  --f:'DM Sans',system-ui,sans-serif;
+  --fm:'DM Mono',monospace;
+  --crit:#f05252;
+  --high:#f59e0b;
+  --med:#3b82f6;
+  --low:#6b7280;
+  --cweb:#10b981;
+  --cfile:#8b5cf6;
+  --cnote:#f59e0b;
+  --cact:#3b82f6;
+}
+html,body{height:100%;overflow:hidden;font-family:var(--f);background:var(--bg);color:var(--t1);font-size:13px;line-height:1.5}
+
+/* ── LAYOUT ─────────────────────────────────── */
+#app{display:flex;height:100vh;overflow:hidden}
+
+/* ── SIDEBAR ─────────────────────────────────── */
+#sidebar{
+  width:210px;min-width:210px;
+  background:var(--s1);
+  border-right:1px solid var(--b1);
+  display:flex;flex-direction:column;
+  padding:14px 0;overflow-y:auto;
+  flex-shrink:0;
+}
+.sb-logo{
+  padding:2px 16px 18px;
+  display:flex;align-items:center;gap:9px;
+  font-size:13px;font-weight:600;letter-spacing:-.3px;color:var(--t1);
+}
+.sb-section{margin-bottom:4px}
+.sb-lbl{
+  padding:3px 16px;font-size:10px;font-weight:600;
+  text-transform:uppercase;letter-spacing:.8px;color:var(--t4);margin-bottom:1px;
+}
+.sb-item{
+  display:flex;align-items:center;gap:8px;
+  padding:6px 16px;cursor:pointer;color:var(--t2);
+  font-size:12.5px;transition:all .12s;position:relative;user-select:none;
+}
+.sb-item:hover{color:var(--t1);background:var(--s2)}
+.sb-item.active{color:var(--t1);background:var(--s3);font-weight:500}
+.sb-item.active::before{
+  content:'';position:absolute;left:0;top:5px;bottom:5px;
+  width:2px;background:var(--t1);border-radius:0 2px 2px 0;
+}
+.sb-item .cnt{
+  margin-left:auto;font-size:10px;font-family:var(--fm);
+  color:var(--t3);background:var(--s3);padding:1px 5px;border-radius:10px;
+}
+.sb-div{border:none;border-top:1px solid var(--b1);margin:6px 0}
+.sb-cat{
+  display:flex;align-items:center;gap:7px;
+  padding:5px 16px 5px 22px;cursor:pointer;
+  color:var(--t2);font-size:12px;transition:all .12s;
+}
+.sb-cat:hover{color:var(--t1);background:var(--s2)}
+.sb-cat.active{color:var(--t1);font-weight:500}
+.dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+
+/* ── MAIN ─────────────────────────────────────── */
+#main{flex:1;display:flex;flex-direction:column;overflow:hidden}
+
+/* ── TOPBAR ──────────────────────────────────── */
+#topbar{
+  border-bottom:1px solid var(--b1);padding:0 20px;
+  display:flex;align-items:center;gap:10px;height:50px;flex-shrink:0;
+  background:var(--s1);
+}
+.tb-title{font-size:14px;font-weight:600;letter-spacing:-.3px;color:var(--t1);flex:1}
+.seg{
+  display:flex;background:var(--s2);border:1px solid var(--b1);
+  border-radius:8px;padding:2px;gap:2px;
+}
+.seg-b{
+  padding:4px 12px;border-radius:6px;font:500 11.5px var(--f);
+  cursor:pointer;border:none;background:transparent;color:var(--t3);transition:all .15s;
+}
+.seg-b.active{background:var(--s4);color:var(--t1);box-shadow:0 1px 3px rgba(0,0,0,.4)}
+.flt{
+  display:flex;align-items:center;gap:5px;
+  padding:4px 10px;border:1px solid var(--b2);border-radius:20px;
+  background:transparent;color:var(--t2);font:12px var(--f);cursor:pointer;transition:all .12s;
+}
+.flt select{background:transparent;border:none;color:inherit;font:inherit;cursor:pointer;outline:none;padding:0;-webkit-appearance:none}
+.flt:hover{border-color:var(--b3);color:var(--t1)}
+.btn{
+  display:inline-flex;align-items:center;gap:5px;
+  padding:6px 13px;border-radius:var(--rsm);
+  font:500 12px var(--f);cursor:pointer;transition:all .12s;border:none;white-space:nowrap;
+}
+.btn-p{background:var(--t1);color:var(--bg)}
+.btn-p:hover{opacity:.85}
+.btn-g{background:transparent;color:var(--t2);border:1px solid var(--b2)}
+.btn-g:hover{color:var(--t1);border-color:var(--b3);background:var(--s2)}
+.ibt{
+  width:25px;height:25px;border-radius:5px;background:var(--s3);
+  border:1px solid var(--b2);color:var(--t2);cursor:pointer;
+  display:flex;align-items:center;justify-content:center;transition:all .12s;
+}
+.ibt:hover{color:var(--t1);background:var(--s2)}
+
+/* ── CONTENT AREA ────────────────────────────── */
+#content{flex:1;overflow-y:auto;padding:0}
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--b2);border-radius:2px}
+
+/* ── DASHBOARD LAYOUT ────────────────────────── */
+#dashboard{
+  display:grid;grid-template-columns:1fr 380px;
+  height:100%;overflow:hidden;
+}
+.dash-panel{
+  display:flex;flex-direction:column;overflow:hidden;
+  border-right:1px solid var(--b1);
+}
+.dash-panel:last-child{border-right:none}
+.panel-header{
+  display:flex;align-items:center;gap:8px;
+  padding:14px 18px 12px;border-bottom:1px solid var(--b1);
+  flex-shrink:0;
+}
+.panel-title{font-size:12.5px;font-weight:600;color:var(--t1);flex:1}
+.panel-body{flex:1;overflow-y:auto;padding:14px 16px}
+
+/* ── STATS ROW ───────────────────────────────── */
+.stats-row{
+  display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:0;
+}
+.stat-c{
+  background:var(--s2);border:1px solid var(--b1);
+  border-radius:var(--r);padding:12px 14px;
+}
+.stat-v{
+  font-size:22px;font-weight:700;font-family:var(--fm);
+  color:var(--t1);line-height:1;margin-bottom:3px;
+}
+.stat-l{font-size:10px;color:var(--t3);text-transform:uppercase;letter-spacing:.4px}
+
+/* ── KNOWLEDGE CARDS ─────────────────────────── */
+.k-group{margin-bottom:22px}
+.g-hdr{
+  display:flex;align-items:center;gap:8px;
+  margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid var(--b1);
+}
+.g-title{font-size:11.5px;font-weight:600;color:var(--t2)}
+.g-badge{
+  font-size:10px;font-family:var(--fm);color:var(--t3);
+  background:var(--s2);padding:1px 5px;border-radius:8px;
+}
+.cards-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:8px}
+.kcard{
+  background:var(--s2);border:1px solid var(--b1);
+  border-radius:var(--r);padding:12px 14px;cursor:pointer;
+  transition:all .15s;position:relative;overflow:hidden;
+}
+.kcard::after{
+  content:'';position:absolute;top:0;left:0;right:0;height:2px;
+  opacity:0;transition:opacity .15s;
+}
+.kcard:hover{border-color:var(--b2);background:var(--s3)}
+.kcard:hover::after{opacity:1}
+.kcard.tweb::after{background:var(--cweb)}
+.kcard.tfich::after{background:var(--cfile)}
+.kcard.tnote::after{background:var(--cnote)}
+.c-hdr{display:flex;align-items:flex-start;gap:9px;margin-bottom:7px}
+.c-ico{
+  width:26px;height:26px;border-radius:6px;
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;
+}
+.c-ico.tweb{background:rgba(16,185,129,.1)}
+.c-ico.tfich{background:rgba(139,92,246,.1)}
+.c-ico.tnote{background:rgba(245,158,11,.1)}
+.c-meta{flex:1;min-width:0}
+.c-name{
+  font-size:12.5px;font-weight:500;color:var(--t1);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.3;
+}
+.c-sub{font-size:10.5px;color:var(--t3);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.c-desc{
+  font-size:11.5px;color:var(--t2);line-height:1.5;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
+}
+.c-foot{display:flex;align-items:center;gap:5px;margin-top:8px;flex-wrap:wrap}
+.tag{
+  font-size:10px;padding:2px 6px;border-radius:8px;
+  background:var(--s4);color:var(--t3);font-family:var(--fm);white-space:nowrap;
+}
+.c-acts{display:none;position:absolute;top:8px;right:8px;gap:3px}
+.kcard:hover .c-acts{display:flex}
+
+/* ── TASKS ───────────────────────────────────── */
+.t-section{margin-bottom:20px}
+.ts-hdr{display:flex;align-items:center;gap:7px;margin-bottom:6px;padding:0 2px}
+.ts-title{font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.6px;color:var(--t3)}
+.ts-cnt{font-size:10px;font-family:var(--fm);color:var(--t3)}
+.trow{
+  display:flex;align-items:center;gap:10px;
+  padding:8px 12px;border-radius:var(--rsm);
+  border:1px solid transparent;cursor:pointer;
+  transition:all .12s;margin-bottom:2px;background:var(--s2);
+}
+.trow:hover{background:var(--s3);border-color:var(--b1)}
+.tchk{
+  width:15px;height:15px;border-radius:3px;border:1.5px solid var(--b3);
+  flex-shrink:0;display:flex;align-items:center;justify-content:center;
+  transition:all .15s;cursor:pointer;background:transparent;
+}
+.tchk:hover{border-color:var(--t3)}
+.tchk.done{background:var(--t3);border-color:var(--t3)}
+.tname{flex:1;font-size:12.5px;color:var(--t1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tname.done{text-decoration:line-through;color:var(--t3)}
+.prio{font-size:10px;font-weight:500;padding:2px 6px;border-radius:8px;flex-shrink:0;font-family:var(--fm)}
+.pc{background:rgba(240,82,82,.12);color:var(--crit)}
+.ph{background:rgba(245,158,11,.12);color:var(--high)}
+.pm{background:rgba(59,130,246,.12);color:var(--med)}
+.pl{background:rgba(107,114,128,.12);color:var(--low)}
+.tdate{font-size:10.5px;color:var(--t3);font-family:var(--fm);flex-shrink:0}
+.tdate.ov{color:var(--crit)}
+.tdate.sn{color:var(--high)}
+.t-acts{display:none;gap:3px}
+.trow:hover .t-acts{display:flex}
+
+/* ── QUICK ADD (tasks) ───────────────────────── */
+.quick-add{
+  display:flex;align-items:center;gap:8px;
+  padding:8px 12px;background:var(--s2);
+  border:1px dashed var(--b2);border-radius:var(--rsm);
+  cursor:pointer;color:var(--t3);font-size:12px;
+  transition:all .15s;margin-bottom:12px;
+}
+.quick-add:hover{border-color:var(--b3);color:var(--t2);background:var(--s3)}
+.quick-add input{
+  flex:1;background:transparent;border:none;outline:none;
+  color:var(--t1);font:13px var(--f);
+}
+.quick-add input::placeholder{color:var(--t3)}
+
+/* ── FULL VIEWS ──────────────────────────────── */
+#view-knowledge,#view-tasks{
+  flex:1;overflow-y:auto;padding:20px;
+}
+
+/* ── EMPTY ───────────────────────────────────── */
+.empty{
+  display:flex;flex-direction:column;align-items:center;
+  justify-content:center;padding:60px 30px;color:var(--t3);
+  text-align:center;gap:10px;
+}
+.empty svg{opacity:.25}
+.empty p{font-size:12px;max-width:250px;line-height:1.6}
+
+/* ── MODAL ───────────────────────────────────── */
+.ov{
+  position:fixed;inset:0;background:rgba(0,0,0,.75);
+  backdrop-filter:blur(5px);display:flex;align-items:center;
+  justify-content:center;z-index:1000;opacity:0;pointer-events:none;transition:opacity .2s;
+}
+.ov.open{opacity:1;pointer-events:all}
+.modal{
+  background:var(--s2);border:1px solid var(--b2);border-radius:13px;
+  width:460px;max-width:calc(100vw - 24px);max-height:calc(100vh - 60px);
+  display:flex;flex-direction:column;
+  box-shadow:0 24px 60px rgba(0,0,0,.7);
+  transform:translateY(14px) scale(.97);transition:transform .2s;overflow:hidden;
+}
+.ov.open .modal{transform:translateY(0) scale(1)}
+.m-hdr{
+  padding:18px 18px 14px;border-bottom:1px solid var(--b1);
+  display:flex;align-items:center;justify-content:space-between;
+}
+.m-title{font-size:14px;font-weight:600;color:var(--t1);display:flex;align-items:center;gap:9px}
+.m-body{padding:18px;overflow-y:auto;flex:1}
+.m-foot{
+  padding:12px 18px;border-top:1px solid var(--b1);
+  display:flex;gap:7px;justify-content:flex-end;
+}
+.fg{margin-bottom:14px}
+.fl{
+  display:block;font-size:10px;font-weight:600;
+  text-transform:uppercase;letter-spacing:.5px;color:var(--t3);margin-bottom:5px;
+}
+.fi,.fs,.fta{
+  width:100%;background:var(--s3);border:1px solid var(--b2);border-radius:var(--rsm);
+  color:var(--t1);font:13px var(--f);padding:8px 11px;outline:none;transition:border-color .15s;-webkit-appearance:none;
+}
+.fi:focus,.fs:focus,.fta:focus{border-color:var(--b3)}
+.fs option{background:var(--s3)}
+.fta{resize:vertical;min-height:80px;line-height:1.5}
+.frow{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.type-sel{display:flex;gap:5px}
+.topt{
+  flex:1;padding:7px 8px;border-radius:var(--rsm);border:1px solid var(--b2);
+  background:transparent;color:var(--t2);font:12px var(--f);cursor:pointer;
+  display:flex;align-items:center;justify-content:center;gap:5px;transition:all .12s;
+}
+.topt:hover{border-color:var(--b3);color:var(--t1)}
+.topt.active{border-color:var(--t1);background:var(--s3);color:var(--t1);font-weight:500}
+
+/* ── TOAST ───────────────────────────────────── */
+.toast{
+  position:fixed;bottom:18px;left:50%;
+  transform:translateX(-50%) translateY(16px);
+  background:var(--s4);border:1px solid var(--b2);border-radius:8px;
+  padding:9px 16px;font-size:12px;color:var(--t1);z-index:2000;
+  opacity:0;transition:all .25s;pointer-events:none;
+  box-shadow:0 8px 24px rgba(0,0,0,.5);display:flex;align-items:center;gap:7px;
+}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* ── LOADING ─────────────────────────────────── */
+.loading{display:flex;align-items:center;justify-content:center;height:100%;color:var(--t3);font-size:12px;gap:9px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.spinner{width:15px;height:15px;border:2px solid var(--b2);border-top-color:var(--t3);border-radius:50%;animation:spin .8s linear infinite}
+
+/* ── PROGRESS BAR ────────────────────────────── */
+.progress-wrap{margin-top:8px}
+.progress-lbl{display:flex;justify-content:space-between;font-size:10.5px;color:var(--t3);margin-bottom:4px}
+.progress-bar{height:4px;background:var(--s4);border-radius:2px;overflow:hidden}
+.progress-fill{height:100%;background:linear-gradient(90deg,#3b82f6,#10b981);border-radius:2px;transition:width .4s}
+
+/* ── MINI SECTION (knowledge panel in dashboard) ── */
+.mini-type-tabs{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:10px}
+.mtt{
+  padding:3px 9px;border-radius:10px;font-size:11px;font-family:var(--fm);
+  cursor:pointer;border:1px solid var(--b2);color:var(--t3);background:transparent;transition:all .12s;
+}
+.mtt:hover{color:var(--t2);border-color:var(--b3)}
+.mtt.active{color:var(--t1);border-color:var(--t1);background:var(--s3)}
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- SIDEBAR -->
+  <nav id="sidebar">
+    <div class="sb-logo">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96.44 2.5 2.5 0 0 1-2.96-3.08 3 3 0 0 1-.34-5.58 2.5 2.5 0 0 1 1.32-4.24 2.5 2.5 0 0 1 1.44-4.54z"/>
+        <path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96.44 2.5 2.5 0 0 0 2.96-3.08 3 3 0 0 0 .34-5.58 2.5 2.5 0 0 0-1.32-4.24 2.5 2.5 0 0 0-1.44-4.54z"/>
+      </svg>
+      Second Cerveau
+    </div>
+
+    <div class="sb-section">
+      <div class="sb-lbl">Vues</div>
+      <div class="sb-item active" data-view="dashboard" onclick="switchView('dashboard')">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+        Dashboard
+      </div>
+      <div class="sb-item" data-view="knowledge" onclick="switchView('knowledge')">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/></svg>
+        Connaissances
+        <span class="cnt" id="cnt-k">0</span>
+      </div>
+      <div class="sb-item" data-view="tasks" onclick="switchView('tasks')">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+        Tâches
+        <span class="cnt" id="cnt-t">0</span>
+      </div>
+    </div>
+
+    <hr class="sb-div">
+    <div class="sb-section">
+      <div class="sb-lbl">Catégories</div>
+      <div id="sb-cats"></div>
+    </div>
+
+    <hr class="sb-div">
+    <div class="sb-section">
+      <div class="sb-lbl">Dossiers</div>
+      <div id="sb-folders"></div>
+    </div>
+  </nav>
+
+  <!-- MAIN -->
+  <div id="main">
+    <div id="topbar">
+      <div class="tb-title" id="tb-title">Dashboard</div>
+      <div id="tb-filters" style="display:flex;align-items:center;gap:6px"></div>
+      <button class="btn btn-p" id="btn-add" onclick="openAddModal()">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Ajouter
+      </button>
+    </div>
+    <div id="content">
+      <div class="loading"><div class="spinner"></div>Connexion à Grist…</div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL -->
+<div class="ov" id="ov" onclick="handleOvClick(event)">
+  <div class="modal">
+    <div class="m-hdr">
+      <div class="m-title" id="m-title">Nouvel élément</div>
+      <button class="ibt" onclick="closeModal()">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="m-body" id="m-body"></div>
+    <div class="m-foot">
+      <button class="btn btn-g" onclick="closeModal()">Annuler</button>
+      <button class="btn btn-p" onclick="saveModal()">Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast">
+  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+  <span id="toast-msg">Enregistré</span>
+</div>
+
+<script>
+/* ══════════════════════════════════════════════
+   STATE
+══════════════════════════════════════════════ */
+const S = {
+  view: 'dashboard',
+  items: [], dossiers: [], cats: [],
+  fType: 'all', fDossier: 'all', fCat: 'all', fPrio: 'all',
+  groupBy: 'dossier',
+  dashKType: 'all',
+  modalMode: null, editId: null, mType: 'note',
+};
+let gReady = false;
+
+/* ══════════════════════════════════════════════
+   ICONS
+══════════════════════════════════════════════ */
+const IC = {
+  web:`<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>`,
+  fichier:`<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>`,
+  note:`<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>`,
+  action:`<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>`,
+  folder:`<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>`,
+  check:`<svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>`,
+  edit:`<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>`,
+  trash:`<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>`,
+  link:`<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>`,
+  plus:`<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>`,
+};
+const TCOL = {web:'#10b981',fichier:'#8b5cf6',note:'#f59e0b',action:'#3b82f6'};
+const PORD = {Critique:0,Haute:1,Moyenne:2,Basse:3};
+/* ══════════════════════════════════════════════
+   GRIST INIT — attendre onOptions OBLIGATOIREMENT
+   avant tout appel à l'API
+══════════════════════════════════════════════ */
+let TABLE_ITEM      = 'item';
+let TABLE_DOSSIER   = 'dossier';
+let TABLE_CATEGORIE = 'categorie';
+let accessGranted   = false;
+
+// grist.ready() déclare les permissions requises.
+// Grist appellera onOptions() UNE FOIS que l'accès sera confirmé.
+// NE PAS appeler loadAll() avant ce callback.
+grist.ready({ requiredAccess: 'full' });
+
+grist.onOptions(function(opts, interaction) {
+  // Récupérer le niveau d'accès réel
+  const level = interaction && interaction.access_level ? interaction.access_level : 'none';
+  accessGranted = (level === 'full');
+
+  // Récupérer les noms de tables sauvegardés (si configurés)
+  if (opts && opts.tableItem)    TABLE_ITEM      = opts.tableItem;
+  if (opts && opts.tableDossier) TABLE_DOSSIER   = opts.tableDossier;
+  if (opts && opts.tableCat)     TABLE_CATEGORIE = opts.tableCat;
+
+  if (accessGranted) {
+    loadAll();
+  } else {
+    document.getElementById('content').innerHTML = `<div class="empty">
+      <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><circle cx="12" cy="16" r=".5" fill="currentColor"/></svg>
+      <p>Accès insuffisant (niveau : <b>${level}</b>).<br><br>
+      Dans le panneau créateur du widget :<br>
+      <b>Accès → Accès complet au document</b><br>
+      puis cliquez <b>Enregistrer</b>.</p>
+    </div>`;
+  }
+});
+
+async function loadAll(){
+  if (!accessGranted) return; // sécurité supplémentaire
+  try{
+    const [ir,dr,cr] = await Promise.all([
+      grist.docApi.fetchTable(TABLE_ITEM),
+      grist.docApi.fetchTable(TABLE_DOSSIER),
+      grist.docApi.fetchTable(TABLE_CATEGORIE),
+    ]);
+    S.cats = t2r(cr); S.dossiers = t2r(dr); S.items = t2r(ir);
+    gReady = true; renderAll();
+  }catch(e){
+    console.error('Grist loadAll error:', e);
+    const msg = String(e && e.message ? e.message : e);
+    // Affiche un UI de config pour corriger les noms de tables
+    let hint = '';
+    if (msg.includes('KeyError') || msg.includes('Unknown table') || msg.includes('not found')) {
+      const tried = `<b>${TABLE_ITEM}</b>, <b>${TABLE_DOSSIER}</b>, <b>${TABLE_CATEGORIE}</b>`;
+      hint = `Tables introuvables (cherché : ${tried}).<br>
+        Vérifiez les noms exacts dans Grist (sensible à la casse).<br><br>
+        <div style="display:flex;flex-direction:column;gap:8px;max-width:300px;margin:12px auto 0">
+          <div><label class="fl">Table items</label><input class="fi" id="cfg-item" value="${TABLE_ITEM}"></div>
+          <div><label class="fl">Table dossiers</label><input class="fi" id="cfg-dossier" value="${TABLE_DOSSIER}"></div>
+          <div><label class="fl">Table catégories</label><input class="fi" id="cfg-cat" value="${TABLE_CATEGORIE}"></div>
+          <button class="btn btn-p" style="justify-content:center" onclick="applyConfig()">Appliquer</button>
+        </div>`;
+    } else {
+      hint = `Erreur inattendue :<br><code style="font-size:11px;font-family:var(--fm)">${eh(msg)}</code>`;
+    }
+    document.getElementById('content').innerHTML = `<div class="empty">
+      <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><circle cx="12" cy="16" r=".5" fill="currentColor"/></svg>
+      <p>${hint}</p>
+    </div>`;
+  }
+}
+
+async function applyConfig(){
+  TABLE_ITEM      = document.getElementById('cfg-item')?.value?.trim()    || TABLE_ITEM;
+  TABLE_DOSSIER   = document.getElementById('cfg-dossier')?.value?.trim() || TABLE_DOSSIER;
+  TABLE_CATEGORIE = document.getElementById('cfg-cat')?.value?.trim()     || TABLE_CATEGORIE;
+  try { await grist.setOptions({ tableItem: TABLE_ITEM, tableDossier: TABLE_DOSSIER, tableCat: TABLE_CATEGORIE }); } catch(_){}
+  loadAll();
+}
+
+function t2r(raw){
+  if(!raw||!raw.id) return [];
+  return raw.id.map((id,i)=>{ const r={id}; Object.keys(raw).forEach(k=>{ r[k]=raw[k][i]; }); return r; });
+}
+
+// Rechargement sur changement Grist — SEULEMENT si accès accordé
+grist.onRecords(() => { if (accessGranted) loadAll(); });
+
+/* ══════════════════════════════════════════════
+   HELPERS
+══════════════════════════════════════════════ */
+const getDos = ref => S.dossiers.find(d=>d.id===ref||d.nom===ref)||null;
+const getCat = ref => S.cats.find(c=>c.id===ref||c.nom===ref)||null;
+const dosName = ref => { const d=getDos(ref); return d?d.nom:''; };
+const dosCatCol = ref => { const d=getDos(ref); if(!d) return '#444'; const c=getCat(d.categorie); return c?c.couleur||'#444':'#444'; };
+function fmtDate(v){
+  if(!v) return '';
+  const d=new Date(typeof v==='number'?v*1000:v);
+  if(isNaN(d)) return '';
+  return d.toLocaleDateString('fr-FR',{day:'2-digit',month:'short'});
+}
+function dcls(v){
+  if(!v) return '';
+  const d=new Date(typeof v==='number'?v*1000:v);
+  if(isNaN(d)) return '';
+  const diff=(d-new Date())/(864e5);
+  return diff<0?'ov':diff<3?'sn':'';
+}
+function pcls(p){ return {'Critique':'pc','Haute':'ph','Moyenne':'pm','Basse':'pl'}[p]||'pl'; }
+function eh(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function ea(s){ return String(s||'').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+function toast(msg){
+  const t=document.getElementById('toast');
+  document.getElementById('toast-msg').textContent=msg;
+  t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2400);
+}
+
+/* ══════════════════════════════════════════════
+   VIEW SWITCH
+══════════════════════════════════════════════ */
+function switchView(v){
+  S.view=v; S.fType='all'; S.fDossier='all'; S.fCat='all'; S.fPrio='all';
+  document.querySelectorAll('.sb-item[data-view]').forEach(el=>el.classList.toggle('active',el.dataset.view===v));
+  const titles={dashboard:'Dashboard',knowledge:'Connaissances',tasks:'Tâches'};
+  document.getElementById('tb-title').textContent=titles[v]||v;
+  renderAll();
+}
+function selCat(id){ S.fCat=id; S.fDossier='all'; S.view='knowledge'; switchView('knowledge'); }
+function selFolder(id){ S.fDossier=id; S.fCat='all'; S.view='knowledge'; switchView('knowledge'); }
+
+/* ══════════════════════════════════════════════
+   RENDER SIDEBAR
+══════════════════════════════════════════════ */
+function renderSidebar(){
+  const ki=S.items.filter(i=>['web','fichier','note'].includes(i.type));
+  const ti=S.items.filter(i=>i.type==='action');
+  document.getElementById('cnt-k').textContent=ki.length;
+  document.getElementById('cnt-t').textContent=ti.filter(t=>!t.termine).length;
+  const ce=document.getElementById('sb-cats'); ce.innerHTML='';
+  S.cats.forEach(cat=>{
+    const n=ki.filter(i=>{ const d=getDos(i.dossier); if(!d) return false; const c=getCat(d.categorie); return c&&c.id===cat.id; }).length;
+    const el=document.createElement('div');
+    el.className='sb-cat'+(S.fCat===cat.id?' active':'');
+    el.innerHTML=`<span class="dot" style="background:${cat.couleur||'#444'}"></span><span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${eh(cat.nom)}</span><span style="margin-left:auto;font-size:10px;font-family:var(--fm);color:var(--t3)">${n}</span>`;
+    el.onclick=()=>selCat(cat.id); ce.appendChild(el);
+  });
+  const fe=document.getElementById('sb-folders'); fe.innerHTML='';
+  S.dossiers.forEach(d=>{
+    const cat=getCat(d.categorie);
+    const el=document.createElement('div');
+    el.className='sb-cat'+(S.fDossier===d.id?' active':'');
+    el.innerHTML=`${cat?`<span class="dot" style="background:${cat.couleur||'#444'}"></span>`:IC.folder}<span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${eh(d.nom)}</span>`;
+    el.onclick=()=>selFolder(d.id); fe.appendChild(el);
+  });
+}
+
+/* ══════════════════════════════════════════════
+   RENDER TOPBAR
+══════════════════════════════════════════════ */
+function renderTopbar(){
+  const el=document.getElementById('tb-filters');
+  if(S.view==='dashboard'){
+    el.innerHTML='';
+  } else if(S.view==='knowledge'){
+    el.innerHTML=`
+      <div class="seg">
+        ${['all','web','fichier','note'].map(t=>`<button class="seg-b ${S.fType===t?'active':''}" onclick="setF('fType','${t}')">${t==='all'?'Tout':t[0].toUpperCase()+t.slice(1)}</button>`).join('')}
+      </div>
+      <div class="flt"><select onchange="setF('fDossier',this.value)">
+        <option value="all">Tous les dossiers</option>
+        ${S.dossiers.map(d=>`<option value="${d.id}" ${S.fDossier==d.id?'selected':''}>${eh(d.nom)}</option>`).join('')}
+      </select></div>
+      <div class="flt"><select onchange="setF('groupBy',this.value)">
+        <option value="dossier" ${S.groupBy==='dossier'?'selected':''}>Grouper : Dossier</option>
+        <option value="type" ${S.groupBy==='type'?'selected':''}>Grouper : Type</option>
+        <option value="categorie" ${S.groupBy==='categorie'?'selected':''}>Grouper : Catégorie</option>
+        <option value="none" ${S.groupBy==='none'?'selected':''}>Sans groupe</option>
+      </select></div>`;
+  } else {
+    el.innerHTML=`
+      <div class="flt"><select onchange="setF('fPrio',this.value)">
+        <option value="all">Toutes priorités</option>
+        ${['Critique','Haute','Moyenne','Basse'].map(p=>`<option value="${p}" ${S.fPrio===p?'selected':''}>${p}</option>`).join('')}
+      </select></div>
+      <div class="flt"><select onchange="setF('fDossier',this.value)">
+        <option value="all">Tous les dossiers</option>
+        ${S.dossiers.map(d=>`<option value="${d.id}" ${S.fDossier==d.id?'selected':''}>${eh(d.nom)}</option>`).join('')}
+      </select></div>`;
+  }
+}
+function setF(k,v){ S[k]=v; renderAll(); }
+
+/* ══════════════════════════════════════════════
+   RENDER ALL
+══════════════════════════════════════════════ */
+function renderAll(){
+  if(!gReady) return;
+  renderSidebar(); renderTopbar();
+  const c=document.getElementById('content');
+  c.style.overflow='hidden'; c.style.padding='0';
+  if(S.view==='dashboard') renderDashboard(c);
+  else if(S.view==='knowledge'){ c.style.overflow='auto'; c.style.padding='20px'; renderKnowledge(c); }
+  else { c.style.overflow='auto'; c.style.padding='20px'; renderTasks(c); }
+}
+
+/* ══════════════════════════════════════════════
+   DASHBOARD
+══════════════════════════════════════════════ */
+function renderDashboard(c){
+  const ki=S.items.filter(i=>['web','fichier','note'].includes(i.type));
+  const ti=S.items.filter(i=>i.type==='action');
+  const done=ti.filter(i=>i.termine).length;
+  const undone=ti.length-done;
+  const crit=ti.filter(i=>i.priorite==='Critique'&&!i.termine).length;
+  const pct=ti.length?Math.round(done/ti.length*100):0;
+  const today=new Date().toDateString();
+  const todayCount=ti.filter(i=>{ if(!i.echeance||i.termine) return false; const d=new Date(typeof i.echeance==='number'?i.echeance*1000:i.echeance); return d.toDateString()===today; }).length;
+  let dki=ki; if(S.dashKType!=='all') dki=ki.filter(i=>i.type===S.dashKType);
+  const recentK=[...dki].reverse().slice(0,20);
+  const undoneTasks=ti.filter(i=>!i.termine).sort((a,b)=>(PORD[a.priorite]??99)-(PORD[b.priorite]??99));
+
+  c.innerHTML=`<div id="dashboard">
+    <div class="dash-panel">
+      <div class="panel-header">
+        ${IC.note}
+        <span class="panel-title">Connaissances <span style="font-weight:400;color:var(--t3)">(${ki.length})</span></span>
+        <div class="mini-type-tabs">
+          ${['all','web','fichier','note'].map(t=>`<span class="mtt ${S.dashKType===t?'active':''}" onclick="setDashKType('${t}')">${t==='all'?'Tout':t[0].toUpperCase()+t.slice(1)}</span>`).join('')}
+        </div>
+        <button class="ibt" onclick="openAddModal('knowledge')" title="Ajouter">${IC.plus}</button>
+      </div>
+      <div class="panel-body">
+        ${recentK.length===0
+          ? `<div class="empty"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/></svg><p>Aucune connaissance</p></div>`
+          : `<div class="cards-grid">${recentK.map(i=>kCardHtml(i)).join('')}</div>`}
+      </div>
+    </div>
+    <div class="dash-panel">
+      <div class="panel-header">
+        ${IC.action}
+        <span class="panel-title">Tâches <span style="font-weight:400;color:var(--t3)">(${undone} actives)</span></span>
+        <button class="ibt" onclick="openAddModal('tasks')" title="Ajouter">${IC.plus}</button>
+      </div>
+      <div class="panel-body">
+        <div class="stats-row" style="grid-template-columns:repeat(2,1fr);margin-bottom:14px">
+          <div class="stat-c"><div class="stat-v">${undone}</div><div class="stat-l">En cours</div></div>
+          <div class="stat-c"><div class="stat-v" style="color:var(--crit)">${crit}</div><div class="stat-l">Critiques</div></div>
+          <div class="stat-c"><div class="stat-v" style="color:var(--high)">${todayCount}</div><div class="stat-l">Aujourd'hui</div></div>
+          <div class="stat-c"><div class="stat-v">${pct}%</div><div class="stat-l">Terminées</div></div>
+        </div>
+        <div class="progress-wrap" style="margin-bottom:16px">
+          <div class="progress-lbl"><span>${done} / ${ti.length} terminées</span></div>
+          <div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>
+        </div>
+        <div class="quick-add" onclick="focusQA()">
+          ${IC.plus}
+          <input id="qa-input" placeholder="Nouvelle tâche… (Entrée pour valider)" onkeydown="qaEnter(event)">
+        </div>
+        ${undoneTasks.length===0
+          ? `<div class="empty" style="padding:30px 0"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg><p>Aucune tâche active</p></div>`
+          : undoneTasks.map(i=>tRowHtml(i)).join('')}
+      </div>
+    </div>
+  </div>`;
+}
+
+function setDashKType(t){ S.dashKType=t; renderAll(); }
+function focusQA(){ document.getElementById('qa-input')?.focus(); }
+async function qaEnter(e){
+  if(e.key!=='Enter') return;
+  const v=e.target.value.trim(); if(!v) return;
+  try{
+    await grist.docApi.applyUserActions([['AddRecord','item',null,{type:'action',nom:v,termine:false}]]);
+    e.target.value=''; toast('Tâche ajoutée ✓'); await loadAll();
+  }catch(err){ console.error(err); }
+}
+
+/* ══════════════════════════════════════════════
+   KNOWLEDGE (full view)
+══════════════════════════════════════════════ */
+function renderKnowledge(c){
+  let items=S.items.filter(i=>['web','fichier','note'].includes(i.type));
+  if(S.fType!=='all') items=items.filter(i=>i.type===S.fType);
+  if(S.fDossier!=='all') items=items.filter(i=>i.dossier==S.fDossier);
+  if(S.fCat!=='all') items=items.filter(i=>{ const d=getDos(i.dossier); if(!d) return false; const ct=getCat(d.categorie); return ct&&ct.id==S.fCat; });
+  if(items.length===0){ c.innerHTML=`<div class="empty"><svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/></svg><p>Aucune connaissance.<br>Cliquez sur <b>Ajouter</b>.</p></div>`; return; }
+  let groups=[];
+  if(S.groupBy==='dossier'){
+    const m={}; items.forEach(i=>{ const k=i.dossier||'__'; if(!m[k]) m[k]={label:dosName(i.dossier)||'Sans dossier',color:dosCatCol(i.dossier),items:[]}; m[k].items.push(i); });
+    groups=Object.values(m).sort((a,b)=>a.label.localeCompare(b.label));
+  } else if(S.groupBy==='type'){
+    const m={}; items.forEach(i=>{ const k=i.type||'autre'; if(!m[k]) m[k]={label:k[0].toUpperCase()+k.slice(1),color:TCOL[k]||'#666',items:[]}; m[k].items.push(i); });
+    groups=Object.values(m);
+  } else if(S.groupBy==='categorie'){
+    const m={}; items.forEach(i=>{ const d=getDos(i.dossier); const ct=d?getCat(d.categorie):null; const k=ct?ct.id:'__'; if(!m[k]) m[k]={label:ct?ct.nom:'Sans catégorie',color:ct?ct.couleur:'#444',items:[]}; m[k].items.push(i); });
+    groups=Object.values(m).sort((a,b)=>a.label.localeCompare(b.label));
+  } else {
+    groups=[{label:null,color:null,items}];
+  }
+  c.innerHTML=groups.map(g=>`
+    <div class="k-group">
+      ${g.label!==null?`<div class="g-hdr">${g.color?`<span class="dot" style="background:${g.color}"></span>`:''}<span class="g-title">${eh(g.label)}</span><span class="g-badge">${g.items.length}</span></div>`:''}
+      <div class="cards-grid">${g.items.map(i=>kCardHtml(i)).join('')}</div>
+    </div>`).join('');
+}
+
+function kCardHtml(item){
+  const dn=dosName(item.dossier);
+  const tags=(item.tags||'').split(',').map(t=>t.trim()).filter(Boolean);
+  const hasLink=item.lien&&item.lien!=='';
+  const tc={'web':'tweb','fichier':'tfich','note':'tnote'}[item.type]||'';
+  return `<div class="kcard ${tc}" onclick="openEditModal(${item.id})">
+    <div class="c-acts">
+      ${hasLink?`<a class="ibt" href="${ea(item.lien)}" target="_blank" onclick="event.stopPropagation()">${IC.link}</a>`:''}
+      <div class="ibt" onclick="event.stopPropagation();openEditModal(${item.id})">${IC.edit}</div>
+      <div class="ibt" onclick="event.stopPropagation();delItem(${item.id})">${IC.trash}</div>
+    </div>
+    <div class="c-hdr">
+      <div class="c-ico ${tc}" style="color:${TCOL[item.type]||'#666'}">${IC[item.type]||''}</div>
+      <div class="c-meta">
+        <div class="c-name">${eh(item.nom||'Sans titre')}</div>
+        ${dn?`<div class="c-sub">${IC.folder} ${eh(dn)}</div>`:''}
+      </div>
+    </div>
+    ${item.description?`<div class="c-desc">${eh(item.description)}</div>`:''}
+    ${tags.length||hasLink?`<div class="c-foot">${tags.slice(0,3).map(t=>`<span class="tag">${eh(t)}</span>`).join('')}${hasLink?`<span class="tag" style="color:var(--cweb)">↗ lien</span>`:''}</div>`:''}
+  </div>`;
+}
+
+/* ══════════════════════════════════════════════
+   TASKS (full view)
+══════════════════════════════════════════════ */
+function renderTasks(c){
+  let items=S.items.filter(i=>i.type==='action');
+  if(S.fPrio!=='all') items=items.filter(i=>i.priorite===S.fPrio);
+  if(S.fDossier!=='all') items=items.filter(i=>i.dossier==S.fDossier);
+  const done=items.filter(i=>i.termine).length;
+  const pct=items.length?Math.round(done/items.length*100):0;
+  const today=new Date().toDateString();
+  const tc=items.filter(i=>{ if(!i.echeance||i.termine) return false; const d=new Date(typeof i.echeance==='number'?i.echeance*1000:i.echeance); return d.toDateString()===today; }).length;
+  let html=`<div class="stats-row" style="margin-bottom:20px">
+    <div class="stat-c"><div class="stat-v">${items.length-done}</div><div class="stat-l">En cours</div></div>
+    <div class="stat-c"><div class="stat-v">${done}</div><div class="stat-l">Terminées</div></div>
+    <div class="stat-c"><div class="stat-v" style="color:var(--crit)">${items.filter(i=>i.priorite==='Critique'&&!i.termine).length}</div><div class="stat-l">Critiques</div></div>
+    <div class="stat-c"><div class="stat-v" style="color:var(--high)">${tc}</div><div class="stat-l">Aujourd'hui</div></div>
+  </div>
+  <div class="progress-wrap" style="margin-bottom:20px">
+    <div class="progress-lbl"><span>Progression</span><span>${pct}%</span></div>
+    <div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>
+  </div>
+  <div class="quick-add" onclick="focusQAFull()">
+    ${IC.plus}<input id="qa-full" placeholder="Nouvelle tâche… (Entrée)" onkeydown="qaEnterFull(event)">
+  </div>`;
+  if(items.length===0){ c.innerHTML=html+`<div class="empty"><svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg><p>Aucune tâche.</p></div>`; return; }
+  const undone=items.filter(i=>!i.termine).sort((a,b)=>(PORD[a.priorite]??99)-(PORD[b.priorite]??99));
+  const doneItems=items.filter(i=>i.termine);
+  const pg={};
+  undone.forEach(i=>{ const p=i.priorite||'Basse'; if(!pg[p]) pg[p]=[]; pg[p].push(i); });
+  ['Critique','Haute','Moyenne','Basse'].forEach(p=>{
+    if(!pg[p]?.length) return;
+    html+=`<div class="t-section"><div class="ts-hdr"><span class="ts-title">${p}</span><span class="ts-cnt">${pg[p].length}</span></div>`;
+    pg[p].forEach(i=>{ html+=tRowHtml(i); }); html+='</div>';
+  });
+  if(doneItems.length){
+    html+=`<div class="t-section"><div class="ts-hdr"><span class="ts-title">Terminées</span><span class="ts-cnt">${doneItems.length}</span></div>`;
+    doneItems.forEach(i=>{ html+=tRowHtml(i); }); html+='</div>';
+  }
+  c.innerHTML=html;
+}
+
+function tRowHtml(item){
+  const dn=dosName(item.dossier);
+  const dc=dcls(item.echeance);
+  return `<div class="trow" onclick="openEditModal(${item.id})">
+    <div class="tchk ${item.termine?'done':''}" onclick="event.stopPropagation();toggleDone(${item.id},${!item.termine})">${item.termine?IC.check:''}</div>
+    <div style="flex:1;min-width:0">
+      <div class="tname ${item.termine?'done':''}">${eh(item.nom||'Sans titre')}</div>
+      ${dn?`<div style="font-size:10.5px;color:var(--t3)">${eh(dn)}</div>`:''}
+    </div>
+    ${item.priorite?`<span class="prio ${pcls(item.priorite)}">${item.priorite}</span>`:''}
+    ${item.echeance?`<span class="tdate ${dc}">${fmtDate(item.echeance)}</span>`:''}
+    <div class="t-acts">
+      <div class="ibt" onclick="event.stopPropagation();openEditModal(${item.id})">${IC.edit}</div>
+      <div class="ibt" onclick="event.stopPropagation();delItem(${item.id})">${IC.trash}</div>
+    </div>
+  </div>`;
+}
+
+function focusQAFull(){ document.getElementById('qa-full')?.focus(); }
+async function qaEnterFull(e){
+  if(e.key!=='Enter') return;
+  const v=e.target.value.trim(); if(!v) return;
+  try{
+    await grist.docApi.applyUserActions([['AddRecord','item',null,{type:'action',nom:v,termine:false}]]);
+    e.target.value=''; toast('Tâche ajoutée ✓'); await loadAll();
+  }catch(err){ console.error(err); }
+}
+
+/* ══════════════════════════════════════════════
+   MODAL
+══════════════════════════════════════════════ */
+function openAddModal(forceView){
+  S.modalMode='add'; S.editId=null;
+  const v=forceView||S.view;
+  S.mType=(v==='tasks')?'action':'note';
+  renderModal(); document.getElementById('ov').classList.add('open');
+}
+function openEditModal(id){
+  const item=S.items.find(i=>i.id===id); if(!item) return;
+  S.modalMode='edit'; S.editId=id; S.mType=item.type||'note';
+  renderModal(); document.getElementById('ov').classList.add('open');
+}
+function closeModal(){ document.getElementById('ov').classList.remove('open'); }
+function handleOvClick(e){ if(e.target===document.getElementById('ov')) closeModal(); }
+
+function renderModal(){
+  const isEdit=S.modalMode==='edit';
+  const item=isEdit?S.items.find(i=>i.id===S.editId)||{}:{};
+  const t=S.mType; const isTask=(t==='action');
+  document.getElementById('m-title').innerHTML=`<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="${TCOL[t]||'currentColor'}" stroke-width="2">${(IC[t]||'').replace(/<svg[^>]*>|<\/svg>/g,'')}</svg>${isEdit?'Modifier':'Ajouter'} ${isTask?'une tâche':'une connaissance'}`;
+  let h='';
+  if(!isTask){
+    h+=`<div class="fg"><label class="fl">Type</label><div class="type-sel">
+      ${['note','web','fichier'].map(tp=>`<div class="topt ${t===tp?'active':''}" onclick="setMType('${tp}')">${IC[tp]} ${tp[0].toUpperCase()+tp.slice(1)}</div>`).join('')}
+    </div></div>`;
+  }
+  h+=`<div class="fg"><label class="fl">Nom *</label><input class="fi" id="f-nom" placeholder="Titre" value="${ea(item.nom||'')}"></div>`;
+  if(!isTask) h+=`<div class="fg"><label class="fl">Description</label><textarea class="fta" id="f-desc" placeholder="Description…">${eh(item.description||'')}</textarea></div>`;
+  if(t==='web') h+=`<div class="fg"><label class="fl">URL</label><input class="fi" id="f-lien" type="url" placeholder="https://…" value="${ea(item.lien||'')}"></div>`;
+  if(isTask) h+=`<div class="frow">
+    <div class="fg"><label class="fl">Priorité</label><select class="fs" id="f-prio">
+      ${['','Critique','Haute','Moyenne','Basse'].map(p=>`<option value="${p}" ${item.priorite===p?'selected':''}>${p||'—'}</option>`).join('')}
+    </select></div>
+    <div class="fg"><label class="fl">Échéance</label><input class="fi" id="f-ech" type="date" value="${toDateI(item.echeance)}"></div>
+  </div>
+  <div class="fg"><label class="fl" style="display:flex;align-items:center;gap:7px;cursor:pointer">
+    <input type="checkbox" id="f-done" ${item.termine?'checked':''} style="width:13px;height:13px;accent-color:var(--t1)"> Terminée
+  </label></div>`;
+  h+=`<div class="fg"><label class="fl">Dossier</label><select class="fs" id="f-dos">
+    <option value="">— Sans dossier —</option>
+    ${S.dossiers.map(d=>`<option value="${d.id}" ${item.dossier==d.id?'selected':''}>${eh(d.nom)}</option>`).join('')}
+  </select></div>`;
+  if(!isTask) h+=`<div class="fg"><label class="fl">Tags (virgule)</label><input class="fi" id="f-tags" placeholder="tag1, tag2" value="${ea(item.tags||'')}"></div>`;
+  document.getElementById('m-body').innerHTML=h;
+}
+
+function setMType(tp){ S.mType=tp; renderModal(); }
+function toDateI(v){ if(!v) return ''; const d=new Date(typeof v==='number'?v*1000:v); return isNaN(d)?'':d.toISOString().split('T')[0]; }
+function fromDateI(v){ if(!v) return null; return Math.floor(new Date(v).getTime()/1000); }
+
+async function saveModal(){
+  const nom=document.getElementById('f-nom')?.value?.trim();
+  if(!nom){ alert('Le nom est requis.'); return; }
+  const t=S.mType;
+  const clean={type:t, nom, termine:document.getElementById('f-done')?.checked||false};
+  const desc=document.getElementById('f-desc')?.value; if(desc) clean.description=desc;
+  const lien=document.getElementById('f-lien')?.value; if(lien) clean.lien=lien;
+  const prio=document.getElementById('f-prio')?.value; if(prio) clean.priorite=prio;
+  const ech=fromDateI(document.getElementById('f-ech')?.value); if(ech) clean.echeance=ech;
+  const dos=parseInt(document.getElementById('f-dos')?.value); if(dos) clean.dossier=dos;
+  const tags=document.getElementById('f-tags')?.value; if(tags) clean.tags=tags;
+  try{
+    if(S.modalMode==='add'){
+      await grist.docApi.applyUserActions([['AddRecord','item',null,clean]]);
+      toast('Élément ajouté ✓');
+    } else {
+      await grist.docApi.applyUserActions([['UpdateRecord','item',S.editId,clean]]);
+      toast('Modifications enregistrées ✓');
+    }
+    closeModal(); await loadAll();
+  }catch(e){ console.error(e); alert('Erreur : '+e.message); }
+}
+
+async function toggleDone(id,val){
+  try{
+    await grist.docApi.applyUserActions([['UpdateRecord','item',id,{termine:val}]]);
+    toast(val?'Tâche terminée ✓':'Tâche réouverte');
+    await loadAll();
+  }catch(e){ console.error(e); }
+}
+
+async function delItem(id){
+  if(!confirm('Supprimer cet élément ?')) return;
+  try{
+    await grist.docApi.applyUserActions([['RemoveRecord','item',id]]);
+    toast('Supprimé'); await loadAll();
+  }catch(e){ console.error(e); alert('Erreur : '+e.message); }
+}
+</script>
+</body>
+</html>
