@@ -37,6 +37,7 @@
   --cnote:#f59e0b;
   --cact:#3b82f6;
 }
+@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
 html,body{height:100%;overflow:hidden;font-family:var(--f);background:var(--bg);color:var(--t1);font-size:13px;line-height:1.5}
 
 /* ── LAYOUT ─────────────────────────────────── */
@@ -264,6 +265,27 @@ html,body{height:100%;overflow:hidden;font-family:var(--f);background:var(--bg);
 .viewer-desc th,.viewer-desc td{border:1px solid var(--b2);padding:4px 8px;text-align:left;}
 .viewer-desc th{background:var(--s2);font-weight:600;}
 .md-hint{font-size:10.5px;color:var(--t3);margin-top:3px;font-weight:400;}
+/* Web preview */
+.web-preview{
+  border-radius:8px;overflow:hidden;border:1px solid var(--b2);
+  background:var(--s2);position:relative;margin-bottom:4px;
+  aspect-ratio:16/9;display:flex;align-items:center;justify-content:center;
+}
+.web-preview img{width:100%;height:100%;object-fit:cover;object-position:top;display:block;}
+.web-preview-loading{
+  display:flex;flex-direction:column;align-items:center;gap:8px;
+  color:var(--t3);font-size:11.5px;
+}
+.web-preview-error{
+  display:flex;flex-direction:column;align-items:center;gap:6px;
+  color:var(--t3);font-size:11.5px;padding:16px;text-align:center;
+}
+.web-preview-open{
+  display:block;width:100%;text-align:center;
+  font-size:11.5px;color:var(--cweb);text-decoration:none;
+  padding:6px 0 2px;transition:opacity .15s;
+}
+.web-preview-open:hover{opacity:.75;}
 .viewer-foot{
   padding:12px 18px;border-top:1px solid var(--b1);
   display:flex;gap:7px;justify-content:flex-end;
@@ -921,7 +943,22 @@ function openViewer(id){
   ].filter(Boolean).join(' · ');
   // Body
   let body='';
-  if(hasLink) body+=`<div><a href="${ea(item.lien)}" target="_blank" style="color:var(--cweb);font-size:12.5px;display:inline-flex;align-items:center;gap:5px;word-break:break-all">${IC.link} ${eh(item.lien)}</a></div>`;
+  // Preview screenshot pour les liens web
+  if(hasLink && item.type==='web'){
+    const encodedUrl=encodeURIComponent(item.lien);
+    const screenshotUrl=`https://s0.wp.com/mshots/v1/${encodedUrl}?w=800&h=450`;
+    body+=`<div>
+      <div class="web-preview" id="wp-${item.id}">
+        <div class="web-preview-loading">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="animation:spin 1s linear infinite"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
+          <span>Chargement de l'aperçu…</span>
+        </div>
+      </div>
+      <a href="${ea(item.lien)}" target="_blank" class="web-preview-open">${IC.link} Ouvrir ${eh(item.lien.length>60?item.lien.slice(0,60)+'…':item.lien)}</a>
+    </div>`;
+  } else if(hasLink){
+    body+=`<div><a href="${ea(item.lien)}" target="_blank" style="color:var(--cweb);font-size:12.5px;display:inline-flex;align-items:center;gap:5px;word-break:break-all">${IC.link} ${eh(item.lien)}</a></div>`;
+  }
   if(item.description){
     const isNote=item.type==='note';
     const descHtml=(isNote&&typeof marked!=='undefined')?marked.parse(item.description):eh(item.description).replace(/\n/g,'<br>');
@@ -930,6 +967,26 @@ function openViewer(id){
   if(tags.length) body+=`<div class="viewer-meta">${tags.map(t=>`<span class="viewer-badge">${eh(t)}</span>`).join('')}</div>`;
   if(!body) body=`<div style="color:var(--t3);font-size:12px;padding:8px 0">Aucun détail supplémentaire.</div>`;
   document.getElementById('viewer-body').innerHTML=body;
+  // Charger le screenshot après injection du HTML
+  if(hasLink && item.type==='web'){
+    const wpEl=document.getElementById('wp-'+item.id);
+    if(wpEl){
+      const encodedUrl=encodeURIComponent(item.lien);
+      const img=new Image();
+      img.onload=()=>{
+        wpEl.innerHTML='';
+        wpEl.appendChild(img);
+        img.style.cssText='width:100%;height:100%;object-fit:cover;object-position:top;display:block;';
+      };
+      img.onerror=()=>{
+        wpEl.innerHTML=`<div class="web-preview-error">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><circle cx="12" cy="16" r=".5" fill="currentColor"/></svg>
+          <span>Aperçu indisponible pour ce site</span>
+        </div>`;
+      };
+      img.src=`https://s0.wp.com/mshots/v1/${encodedUrl}?w=800&h=450`;
+    }
+  }
   // Edit button
   document.getElementById('viewer-edit-btn').onclick=()=>{ closeViewer(); openEditModal(id); };
   document.getElementById('viewer-ov').classList.add('open');
