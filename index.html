@@ -193,13 +193,65 @@ html,body{height:100%;overflow:hidden;font-family:var(--f);background:var(--bg);
 .krow:last-child td{border-bottom:none;}
 .row-acts{display:none;align-items:center;gap:3px;}
 .type-pill{
-  display:inline-flex;align-items:center;gap:4px;
-  font-size:10px;font-family:var(--fm);padding:2px 7px;
-  border-radius:8px;font-weight:500;white-space:nowrap;
+  display:inline-flex;align-items:center;justify-content:center;
+  width:24px;height:24px;border-radius:6px;flex-shrink:0;
 }
 .type-pill.tweb{background:rgba(12,166,120,.1);color:var(--cweb);}
 .type-pill.tfich{background:rgba(139,92,246,.1);color:var(--cfile);}
 .type-pill.tnote{background:rgba(245,158,11,.12);color:#b45309;}
+/* Search bar */
+.search-wrap{
+  display:flex;align-items:center;gap:6px;
+  background:var(--s2);border:1px solid var(--b2);border-radius:20px;
+  padding:4px 10px;transition:border-color .15s;min-width:180px;
+}
+.search-wrap:focus-within{border-color:var(--b3);}
+.search-wrap input{
+  background:transparent;border:none;outline:none;
+  font:12.5px var(--f);color:var(--t1);width:100%;
+}
+.search-wrap input::placeholder{color:var(--t3);}
+.search-clear{
+  background:none;border:none;cursor:pointer;
+  color:var(--t3);padding:0;display:flex;align-items:center;
+  transition:color .12s;flex-shrink:0;
+}
+.search-clear:hover{color:var(--t2);}
+/* Viewer popup */
+.viewer-ov{
+  position:fixed;inset:0;background:rgba(0,0,0,.35);
+  backdrop-filter:blur(4px);display:flex;align-items:center;
+  justify-content:center;z-index:1000;opacity:0;pointer-events:none;transition:opacity .2s;
+}
+.viewer-ov.open{opacity:1;pointer-events:all;}
+.viewer{
+  background:var(--s1);border:1px solid var(--b2);border-radius:13px;
+  width:520px;max-width:calc(100vw - 24px);max-height:calc(100vh - 60px);
+  display:flex;flex-direction:column;overflow:hidden;
+  box-shadow:0 20px 50px rgba(0,0,0,.15);
+  transform:translateY(12px) scale(.97);transition:transform .2s;
+}
+.viewer-ov.open .viewer{transform:translateY(0) scale(1);}
+.viewer-hdr{
+  padding:16px 18px 14px;border-bottom:1px solid var(--b1);
+  display:flex;align-items:flex-start;gap:10px;
+}
+.viewer-ico{
+  width:32px;height:32px;border-radius:8px;
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;
+}
+.viewer-ico.tweb{background:rgba(12,166,120,.1);color:var(--cweb);}
+.viewer-ico.tfich{background:rgba(139,92,246,.1);color:var(--cfile);}
+.viewer-ico.tnote{background:rgba(245,158,11,.12);color:#b45309;}
+.viewer-title{font-size:15px;font-weight:600;color:var(--t1);line-height:1.3;flex:1;}
+.viewer-body{padding:16px 18px;overflow-y:auto;flex:1;display:flex;flex-direction:column;gap:12px;}
+.viewer-meta{display:flex;flex-wrap:wrap;gap:8px;align-items:center;}
+.viewer-badge{font-size:11px;padding:3px 8px;border-radius:6px;background:var(--s2);border:1px solid var(--b1);color:var(--t2);}
+.viewer-desc{font-size:13px;color:var(--t1);line-height:1.7;white-space:pre-wrap;}
+.viewer-foot{
+  padding:12px 18px;border-top:1px solid var(--b1);
+  display:flex;gap:7px;justify-content:flex-end;
+}
 .col-name{width:35%}
 .col-type{width:90px}
 .col-dos{width:18%}
@@ -447,6 +499,27 @@ html,body{height:100%;overflow:hidden;font-family:var(--f);background:var(--bg);
   </div>
 </div>
 
+<!-- VIEWER -->
+<div class="viewer-ov" id="viewer-ov" onclick="handleViewerOvClick(event)">
+  <div class="viewer">
+    <div class="viewer-hdr">
+      <div class="viewer-ico" id="viewer-ico"></div>
+      <div style="flex:1;min-width:0">
+        <div class="viewer-title" id="viewer-title"></div>
+        <div id="viewer-subtitle" style="font-size:11.5px;color:var(--t2);margin-top:3px"></div>
+      </div>
+      <button class="ibt" onclick="closeViewer()" style="flex-shrink:0">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="viewer-body" id="viewer-body"></div>
+    <div class="viewer-foot">
+      <button class="btn btn-g" onclick="closeViewer()">Fermer</button>
+      <button class="btn btn-p" id="viewer-edit-btn" onclick="">Modifier</button>
+    </div>
+  </div>
+</div>
+
 <!-- TOAST -->
 <div class="toast" id="toast">
   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
@@ -455,7 +528,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--f);background:var(--bg);
 
 <script>
 /* STATE */
-const S={view:'dashboard',items:[],dossiers:[],cats:[],fType:'all',fDossier:'all',fCat:'all',fPrio:'all',groupBy:'dossier',dashKType:'all',modalMode:null,editId:null,mType:'note',expandedCat:null};
+const S={view:'dashboard',items:[],dossiers:[],cats:[],fType:'all',fDossier:'all',fCat:'all',fPrio:'all',fSearch:'',groupBy:'dossier',dashKType:'all',modalMode:null,editId:null,mType:'note',expandedCat:null};
 let gReady=false;
 
 /* ICONS */
@@ -621,12 +694,19 @@ function renderSidebar(){
 function renderTopbar(){
   const el=document.getElementById('tb-filters');
   if(S.view==='dashboard'){ el.innerHTML=''; return; }
+  const searchBar=`<div class="search-wrap">
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="color:var(--t3);flex-shrink:0"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    <input id="search-input" placeholder="Rechercher…" value="${eh(S.fSearch)}" oninput="setF('fSearch',this.value)" onkeydown="if(event.key==='Escape'){setF('fSearch','');this.value=''}">
+    ${S.fSearch?`<button class="search-clear" onclick="setF('fSearch','');document.getElementById('search-input').value=''" title="Effacer"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>`:''}
+  </div>`;
   if(S.view==='knowledge'){
-    el.innerHTML=`<div class="seg">${['all','web','fichier','note'].map(t=>`<button class="seg-b ${S.fType===t?'active':''}" onclick="setF('fType','${t}')">${t==='all'?'Tout':t[0].toUpperCase()+t.slice(1)}</button>`).join('')}</div>
+    el.innerHTML=searchBar+`
+    <div class="seg">${['all','web','fichier','note'].map(t=>`<button class="seg-b ${S.fType===t?'active':''}" onclick="setF('fType','${t}')">${t==='all'?'Tout':t[0].toUpperCase()+t.slice(1)}</button>`).join('')}</div>
     <div class="flt"><select onchange="setF('fDossier',this.value)"><option value="all">Tous les dossiers</option>${S.dossiers.map(d=>`<option value="${d.id}" ${S.fDossier==d.id?'selected':''}>${eh(d.nom)}</option>`).join('')}</select></div>
     <div class="flt"><select onchange="setF('groupBy',this.value)"><option value="dossier" ${S.groupBy==='dossier'?'selected':''}>Grouper : Dossier</option><option value="type" ${S.groupBy==='type'?'selected':''}>Grouper : Type</option><option value="categorie" ${S.groupBy==='categorie'?'selected':''}>Grouper : Catégorie</option><option value="none" ${S.groupBy==='none'?'selected':''}>Sans groupe</option></select></div>`;
   } else {
-    el.innerHTML=`<div class="flt"><select onchange="setF('fPrio',this.value)"><option value="all">Toutes priorités</option>${['Critique','Haute','Moyenne','Basse'].map(p=>`<option value="${p}" ${S.fPrio===p?'selected':''}>${p}</option>`).join('')}</select></div>
+    el.innerHTML=searchBar+`
+    <div class="flt"><select onchange="setF('fPrio',this.value)"><option value="all">Toutes priorités</option>${['Critique','Haute','Moyenne','Basse'].map(p=>`<option value="${p}" ${S.fPrio===p?'selected':''}>${p}</option>`).join('')}</select></div>
     <div class="flt"><select onchange="setF('fDossier',this.value)"><option value="all">Tous les dossiers</option>${S.dossiers.map(d=>`<option value="${d.id}" ${S.fDossier==d.id?'selected':''}>${eh(d.nom)}</option>`).join('')}</select></div>`;
   }
 }
@@ -694,6 +774,7 @@ function renderKnowledge(c){
   if(S.fType!=='all') items=items.filter(i=>i.type===S.fType);
   if(S.fDossier!=='all') items=items.filter(i=>i.dossier==S.fDossier);
   if(S.fCat!=='all') items=items.filter(i=>{ const d=getDos(i.dossier); if(!d) return false; const ct=getCat(d.categorie); return ct&&ct.id==S.fCat; });
+  if(S.fSearch){ const q=S.fSearch.toLowerCase(); items=items.filter(i=>(i.nom||'').toLowerCase().includes(q)||(i.description||'').toLowerCase().includes(q)||(i.tags||'').toLowerCase().includes(q)||(dosName(i.dossier)||'').toLowerCase().includes(q)); }
   if(items.length===0){ c.innerHTML=`<div class="empty"><svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/></svg><p>Aucune connaissance.<br>Cliquez sur <b>Ajouter</b>.</p></div>`; return; }
   let groups=[];
   if(S.groupBy==='dossier'){ const m={}; items.forEach(i=>{ const k=i.dossier||'__'; if(!m[k]) m[k]={label:dosName(i.dossier)||'Sans dossier',color:dosCatCol(i.dossier),items:[]}; m[k].items.push(i); }); groups=Object.values(m).sort((a,b)=>a.label.localeCompare(b.label)); }
@@ -724,15 +805,14 @@ function kRowHtml(item){
   const tags=(item.tags||'').split(',').map(t=>t.trim()).filter(Boolean);
   const hasLink=item.lien&&item.lien!=='';
   const tc={'web':'tweb','fichier':'tfich','note':'tnote'}[item.type]||'';
-  const typeLabel={'web':'Web','fichier':'Fichier','note':'Note'}[item.type]||item.type;
   const desc=item.description?eh(item.description).replace(/\n/g,' '):'';
-  return `<tr class="krow" onclick="openEditModal(${item.id})">
-    <td class="col-type"><span class="type-pill ${tc}">${IC[item.type]||''} ${typeLabel}</span></td>
+  return `<tr class="krow" onclick="openViewer(${item.id})">
+    <td class="col-type"><span class="type-pill ${tc}" title="${item.type}">${IC[item.type]||''}</span></td>
     <td class="col-name" style="font-weight:500">${eh(item.nom||'Sans titre')}${hasLink?` <a href="${ea(item.lien)}" target="_blank" onclick="event.stopPropagation()" style="color:var(--cweb);text-decoration:none;font-size:10px;margin-left:4px">↗</a>`:''}</td>
     <td class="col-dos" style="color:var(--t2);font-size:12px">${dn?eh(dn):''}</td>
     <td class="col-tags">${tags.slice(0,3).map(t=>`<span class="tag">${eh(t)}</span>`).join(' ')}</td>
     <td class="col-desc" style="color:var(--t2);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:0">${desc}</td>
-    <td class="col-act"><div class="row-acts" style="justify-content:flex-end"><div class="ibt" onclick="event.stopPropagation();openEditModal(${item.id})">${IC.edit}</div><div class="ibt" onclick="event.stopPropagation();delItem(${item.id})">${IC.trash}</div></div></td>
+    <td class="col-act"><div class="row-acts" style="justify-content:flex-end"><div class="ibt" onclick="event.stopPropagation();openEditModal(${item.id})" title="Modifier">${IC.edit}</div><div class="ibt" onclick="event.stopPropagation();delItem(${item.id})" title="Supprimer">${IC.trash}</div></div></td>
   </tr>`;
 }
 
@@ -741,6 +821,7 @@ function renderTasks(c){
   let items=S.items.filter(i=>i.type==='action');
   if(S.fPrio!=='all') items=items.filter(i=>i.priorite===S.fPrio);
   if(S.fDossier!=='all') items=items.filter(i=>i.dossier==S.fDossier);
+  if(S.fSearch){ const q=S.fSearch.toLowerCase(); items=items.filter(i=>(i.nom||'').toLowerCase().includes(q)||(i.description||'').toLowerCase().includes(q)); }
   const done=items.filter(i=>i.termine).length;
   const pct=items.length?Math.round(done/items.length*100):0;
   const today=new Date().toDateString();
@@ -778,6 +859,34 @@ async function qaEnterFull(e){
 }
 
 /* MODAL */
+function openViewer(id){
+  const item=S.items.find(i=>i.id===id); if(!item) return;
+  const tc={'web':'tweb','fichier':'tfich','note':'tnote'}[item.type]||'';
+  const dn=dosName(item.dossier);
+  const tags=(item.tags||'').split(',').map(t=>t.trim()).filter(Boolean);
+  const hasLink=item.lien&&item.lien!=='';
+  // Header
+  document.getElementById('viewer-ico').className='viewer-ico '+tc;
+  document.getElementById('viewer-ico').innerHTML=IC[item.type]||'';
+  document.getElementById('viewer-title').textContent=item.nom||'Sans titre';
+  document.getElementById('viewer-subtitle').innerHTML=[
+    dn?`<span>${IC.folder} ${eh(dn)}</span>`:'',
+    `<span style="text-transform:capitalize">${item.type}</span>`
+  ].filter(Boolean).join(' · ');
+  // Body
+  let body='';
+  if(hasLink) body+=`<div><a href="${ea(item.lien)}" target="_blank" style="color:var(--cweb);font-size:12.5px;display:inline-flex;align-items:center;gap:5px;word-break:break-all">${IC.link} ${eh(item.lien)}</a></div>`;
+  if(item.description) body+=`<div class="viewer-desc">${eh(item.description)}</div>`;
+  if(tags.length) body+=`<div class="viewer-meta">${tags.map(t=>`<span class="viewer-badge">${eh(t)}</span>`).join('')}</div>`;
+  if(!body) body=`<div style="color:var(--t3);font-size:12px;padding:8px 0">Aucun détail supplémentaire.</div>`;
+  document.getElementById('viewer-body').innerHTML=body;
+  // Edit button
+  document.getElementById('viewer-edit-btn').onclick=()=>{ closeViewer(); openEditModal(id); };
+  document.getElementById('viewer-ov').classList.add('open');
+}
+function closeViewer(){ document.getElementById('viewer-ov').classList.remove('open'); }
+function handleViewerOvClick(e){ if(e.target===document.getElementById('viewer-ov')) closeViewer(); }
+
 function openAddModal(forceView){
   S.modalMode='add'; S.editId=null;
   S.mType=(forceView||S.view)==='tasks'?'action':'note';
