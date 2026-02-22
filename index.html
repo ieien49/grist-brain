@@ -395,7 +395,19 @@ html,body{height:100%;overflow:hidden;font-family:var(--f);background:var(--bg);
 
     <hr class="sb-div">
     <div class="sb-section">
-      <div class="sb-lbl">Catégories</div>
+      <div class="sb-lbl">Inbox</div>
+      <div id="sb-inbox"></div>
+    </div>
+
+    <hr class="sb-div">
+    <div class="sb-section">
+      <div class="sb-lbl">Projets</div>
+      <div id="sb-projets"></div>
+    </div>
+
+    <hr class="sb-div">
+    <div class="sb-section">
+      <div class="sb-lbl">Domaines</div>
       <div id="sb-cats"></div>
     </div>
 
@@ -553,20 +565,42 @@ function selFolder(id){
 }
 
 /* SIDEBAR */
+function makeFolderEl(d, ki){
+  const itemCount=ki.filter(i=>i.dossier==d.id).length;
+  const el=document.createElement('div');
+  el.className='sb-subfolder'+(S.fDossier===d.id?' active':'');
+  el.innerHTML=`${IC.folder}<span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${eh(d.nom)}</span><span style="font-size:10px;font-family:var(--fm);color:var(--t3)">${itemCount}</span>`;
+  el.onclick=(e)=>{ e.stopPropagation(); selFolder(d.id); };
+  return el;
+}
+
 function renderSidebar(){
   const ki=S.items.filter(i=>['web','fichier','note'].includes(i.type));
   const ti=S.items.filter(i=>i.type==='action');
   document.getElementById('cnt-k').textContent=ki.length;
   document.getElementById('cnt-t').textContent=ti.filter(t=>!t.termine).length;
+
+  // ── Inbox : dossiers de la catégorie nommée "Inbox" (type Inbox) ──
+  const inboxCat=S.cats.find(c=>c.nom==='Inbox'||c.type==='Inbox');
+  const inboxEl=document.getElementById('sb-inbox'); inboxEl.innerHTML='';
+  const inboxDossiers=inboxCat?S.dossiers.filter(d=>{ const c=getCat(d.categorie); return c&&c.id===inboxCat.id; }):[];
+  inboxDossiers.forEach(d=>inboxEl.appendChild(makeFolderEl(d,ki)));
+
+  // ── Projets : dossiers avec projet===true ──
+  const projEl=document.getElementById('sb-projets'); projEl.innerHTML='';
+  const projDossiers=S.dossiers.filter(d=>d.projet===true||d.projet===1);
+  projDossiers.forEach(d=>projEl.appendChild(makeFolderEl(d,ki)));
+  if(!projDossiers.length){ const em=document.createElement('div'); em.style.cssText='padding:4px 14px 4px 22px;font-size:11px;color:var(--t3)'; em.textContent='Aucun projet'; projEl.appendChild(em); }
+
+  // ── Domaines : toutes catégories SAUF Inbox ──
   const ce=document.getElementById('sb-cats'); ce.innerHTML='';
-  S.cats.forEach(cat=>{
+  const domaineCats=S.cats.filter(c=>c.nom!=='Inbox'&&c.type!=='Inbox');
+  domaineCats.forEach(cat=>{
     const catDossiers=S.dossiers.filter(d=>{ const c=getCat(d.categorie); return c&&c.id===cat.id; });
     const n=ki.filter(i=>{ const d=getDos(i.dossier); if(!d) return false; const c=getCat(d.categorie); return c&&c.id===cat.id; }).length;
     const isExpanded=S.expandedCat===cat.id;
-    // Category row
     const catEl=document.createElement('div');
     catEl.className='sb-cat'+(S.fCat===cat.id?' active':'');
-    catEl.style.cssText='justify-content:flex-start';
     catEl.innerHTML=`
       <span class="dot" style="background:${cat.couleur||'#444'}"></span>
       <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${eh(cat.nom)}</span>
@@ -574,18 +608,10 @@ function renderSidebar(){
       ${catDossiers.length?`<svg class="sb-cat-chevron ${isExpanded?'open':''}" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>`:''}`;
     catEl.onclick=()=>selCat(cat.id);
     ce.appendChild(catEl);
-    // Sub-folders
     if(catDossiers.length){
       const subEl=document.createElement('div');
       subEl.className='sb-folders-sub'+(isExpanded?' open':'');
-      catDossiers.forEach(d=>{
-        const itemCount=ki.filter(i=>i.dossier==d.id).length;
-        const dEl=document.createElement('div');
-        dEl.className='sb-subfolder'+(S.fDossier===d.id?' active':'');
-        dEl.innerHTML=`${IC.folder}<span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${eh(d.nom)}</span><span style="font-size:10px;font-family:var(--fm);color:var(--t3)">${itemCount}</span>`;
-        dEl.onclick=(e)=>{ e.stopPropagation(); selFolder(d.id); };
-        subEl.appendChild(dEl);
-      });
+      catDossiers.forEach(d=>subEl.appendChild(makeFolderEl(d,ki)));
       ce.appendChild(subEl);
     }
   });
@@ -777,7 +803,9 @@ function renderModal(){
   if(!isTask) h+=`<div class="fg"><label class="fl">Description</label><textarea class="fta" id="f-desc" placeholder="Description…">${eh(item.description||'')}</textarea></div>`;
   if(t==='web') h+=`<div class="fg"><label class="fl">URL</label><input class="fi" id="f-lien" type="url" placeholder="https://…" value="${ea(item.lien||'')}"></div>`;
   if(isTask) h+=`<div class="frow"><div class="fg"><label class="fl">Priorité</label><select class="fs" id="f-prio">${['','Critique','Haute','Moyenne','Basse'].map(p=>`<option value="${p}" ${item.priorite===p?'selected':''}>${p||'—'}</option>`).join('')}</select></div><div class="fg"><label class="fl">Échéance</label><input class="fi" id="f-ech" type="date" value="${toDateI(item.echeance)}"></div></div><div class="fg"><label class="fl" style="display:flex;align-items:center;gap:7px;cursor:pointer"><input type="checkbox" id="f-done" ${item.termine?'checked':''} style="width:13px;height:13px;accent-color:var(--t1)"> Terminée</label></div>`;
-  h+=`<div class="fg"><label class="fl">Dossier</label><select class="fs" id="f-dos"><option value="">— Sans dossier —</option>${S.dossiers.map(d=>`<option value="${d.id}" ${item.dossier==d.id?'selected':''}>${eh(d.nom)}</option>`).join('')}</select></div>`;
+  const inboxDosId=S.dossiers.find(d=>d.nom==='Inbox')?.id;
+  const defaultDos=isEdit?item.dossier:(inboxDosId||'');
+  h+=`<div class="fg"><label class="fl">Dossier</label><select class="fs" id="f-dos"><option value="">— Sans dossier —</option>${S.dossiers.map(d=>`<option value="${d.id}" ${d.id==defaultDos?'selected':''}>${eh(d.nom)}</option>`).join('')}</select></div>`;
   if(!isTask) h+=`<div class="fg"><label class="fl">Tags (virgule)</label><input class="fi" id="f-tags" placeholder="tag1, tag2" value="${ea(item.tags||'')}"></div>`;
   document.getElementById('m-body').innerHTML=h;
 }
@@ -794,7 +822,13 @@ async function saveModal(){
   const lien=document.getElementById('f-lien')?.value; if(lien) clean.lien=lien;
   const prio=document.getElementById('f-prio')?.value; if(prio) clean.priorite=prio;
   const ech=fromDateI(document.getElementById('f-ech')?.value); if(ech) clean.echeance=ech;
-  const dos=parseInt(document.getElementById('f-dos')?.value); if(dos) clean.dossier=dos;
+  let dosVal=parseInt(document.getElementById('f-dos')?.value);
+  if(!dosVal){
+    // Cherche le dossier nommé "Inbox" comme fallback
+    const inboxDos=S.dossiers.find(d=>d.nom==='Inbox');
+    if(inboxDos) dosVal=inboxDos.id;
+  }
+  if(dosVal) clean.dossier=dosVal;
   const tags=document.getElementById('f-tags')?.value; if(tags) clean.tags=tags;
   try{
     if(S.modalMode==='add'){ await grist.docApi.applyUserActions([['AddRecord',TI,null,clean]]); toast('Élément ajouté ✓'); }
