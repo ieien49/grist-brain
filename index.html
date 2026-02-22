@@ -446,22 +446,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--f);background:var(--bg);
     </div>
 
     <hr class="sb-div">
-    <div class="sb-section">
-      <div class="sb-lbl">Inbox</div>
-      <div id="sb-inbox"></div>
-    </div>
-
-    <hr class="sb-div">
-    <div class="sb-section">
-      <div class="sb-lbl">Projets</div>
-      <div id="sb-projets"></div>
-    </div>
-
-    <hr class="sb-div">
-    <div class="sb-section">
-      <div class="sb-lbl">Domaines</div>
-      <div id="sb-cats"></div>
-    </div>
+    <div id="sb-dynamic"></div>
 
 
   </nav>
@@ -647,45 +632,77 @@ function makeFolderEl(d, ki){
   return el;
 }
 
+function renderCatGroup(cat, ki, container){
+  const catDossiers=S.dossiers.filter(d=>{ const c=getCat(d.categorie); return c&&c.id===cat.id; });
+  const n=ki.filter(i=>{ const d=getDos(i.dossier); if(!d) return false; const c=getCat(d.categorie); return c&&c.id===cat.id; }).length;
+  const isExpanded=S.expandedCat===cat.id;
+  const catEl=document.createElement('div');
+  catEl.className='sb-cat'+(S.fCat===cat.id?' active':'');
+  catEl.innerHTML=`
+    <span class="dot" style="background:${cat.couleur||'#444'}"></span>
+    <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${eh(cat.nom)}</span>
+    <span style="font-size:10px;font-family:var(--fm);color:var(--t3);margin-right:4px">${n}</span>
+    ${catDossiers.length?`<svg class="sb-cat-chevron ${isExpanded?'open':''}" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>`:''}`;
+  catEl.onclick=()=>selCat(cat.id);
+  container.appendChild(catEl);
+  if(catDossiers.length){
+    const subEl=document.createElement('div');
+    subEl.className='sb-folders-sub'+(isExpanded?' open':'');
+    catDossiers.forEach(d=>subEl.appendChild(makeFolderEl(d,ki)));
+    container.appendChild(subEl);
+  }
+}
+
+function addSbSection(container, label, buildFn){
+  const div=document.createElement('div');
+  div.className='sb-section';
+  const lbl=document.createElement('div');
+  lbl.className='sb-lbl'; lbl.textContent=label;
+  div.appendChild(lbl);
+  buildFn(div);
+  const hr=document.createElement('hr');
+  hr.className='sb-div';
+  container.appendChild(hr);
+  container.appendChild(div);
+}
+
 function renderSidebar(){
   const ki=S.items.filter(i=>['web','fichier','note'].includes(i.type));
   const ti=S.items.filter(i=>i.type==='action');
   document.getElementById('cnt-k').textContent=ki.length;
   document.getElementById('cnt-t').textContent=ti.filter(t=>!t.termine).length;
 
-  // ── Inbox : dossiers de la catégorie nommée "Inbox" (type Inbox) ──
-  const inboxCat=S.cats.find(c=>c.nom==='Inbox'||c.type==='Inbox');
-  const inboxEl=document.getElementById('sb-inbox'); inboxEl.innerHTML='';
-  const inboxDossiers=inboxCat?S.dossiers.filter(d=>{ const c=getCat(d.categorie); return c&&c.id===inboxCat.id; }):[];
-  inboxDossiers.forEach(d=>inboxEl.appendChild(makeFolderEl(d,ki)));
+  const dyn=document.getElementById('sb-dynamic');
+  dyn.innerHTML='';
 
-  // ── Projets : dossiers avec projet===true ──
-  const projEl=document.getElementById('sb-projets'); projEl.innerHTML='';
+  // Ordre des types de catégorie à afficher
+  const typeOrder=['Inbox','Domaine','Ressource'];
+
+  typeOrder.forEach(typ=>{
+    const catsOfType=S.cats.filter(c=>{
+      const t=String(c.type||'').trim();
+      return t===typ || (typ==='Inbox'&&(c.nom==='Inbox'));
+    });
+    if(!catsOfType.length) return;
+
+    // Label de section : le type lui-même (Inbox / Domaine → Domaines / Ressource → Ressources)
+    const sectionLabel={'Inbox':'Inbox','Domaine':'Domaines','Ressource':'Ressources'}[typ]||typ;
+
+    addSbSection(dyn, sectionLabel, (div)=>{
+      catsOfType.forEach(cat=>renderCatGroup(cat, ki, div));
+    });
+  });
+
+  // Projets : dossiers avec projet===true (indépendant des catégories)
   const projDossiers=S.dossiers.filter(d=>d.projet===true||d.projet===1);
-  projDossiers.forEach(d=>projEl.appendChild(makeFolderEl(d,ki)));
-  if(!projDossiers.length){ const em=document.createElement('div'); em.style.cssText='padding:4px 14px 4px 22px;font-size:11px;color:var(--t3)'; em.textContent='Aucun projet'; projEl.appendChild(em); }
-
-  // ── Domaines : toutes catégories SAUF Inbox ──
-  const ce=document.getElementById('sb-cats'); ce.innerHTML='';
-  const domaineCats=S.cats.filter(c=>c.nom!=='Inbox'&&c.type!=='Inbox');
-  domaineCats.forEach(cat=>{
-    const catDossiers=S.dossiers.filter(d=>{ const c=getCat(d.categorie); return c&&c.id===cat.id; });
-    const n=ki.filter(i=>{ const d=getDos(i.dossier); if(!d) return false; const c=getCat(d.categorie); return c&&c.id===cat.id; }).length;
-    const isExpanded=S.expandedCat===cat.id;
-    const catEl=document.createElement('div');
-    catEl.className='sb-cat'+(S.fCat===cat.id?' active':'');
-    catEl.innerHTML=`
-      <span class="dot" style="background:${cat.couleur||'#444'}"></span>
-      <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${eh(cat.nom)}</span>
-      <span style="font-size:10px;font-family:var(--fm);color:var(--t3);margin-right:4px">${n}</span>
-      ${catDossiers.length?`<svg class="sb-cat-chevron ${isExpanded?'open':''}" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>`:''}`;
-    catEl.onclick=()=>selCat(cat.id);
-    ce.appendChild(catEl);
-    if(catDossiers.length){
-      const subEl=document.createElement('div');
-      subEl.className='sb-folders-sub'+(isExpanded?' open':'');
-      catDossiers.forEach(d=>subEl.appendChild(makeFolderEl(d,ki)));
-      ce.appendChild(subEl);
+  addSbSection(dyn, 'Projets', (div)=>{
+    if(projDossiers.length){
+      projDossiers.forEach(d=>div.appendChild(makeFolderEl(d,ki)));
+    } else {
+      const em=document.createElement('div');
+      em.style.cssText='padding:4px 14px 4px 22px;font-size:11px;color:var(--t3)';
+      em.textContent='Aucun projet';
+      div.appendChild(em);
     }
   });
 }
