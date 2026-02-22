@@ -196,9 +196,9 @@ html,body{height:100%;overflow:hidden;font-family:var(--f);background:var(--bg);
   display:inline-flex;align-items:center;justify-content:center;
   width:24px;height:24px;border-radius:6px;flex-shrink:0;
 }
-.type-pill.tweb{background:rgba(12,166,120,.1);color:var(--cweb);}
-.type-pill.tfich{background:rgba(139,92,246,.1);color:var(--cfile);}
-.type-pill.tnote{background:rgba(245,158,11,.12);color:#b45309;}
+.type-pill.tweb{background:var(--s3);color:var(--t3);}
+.type-pill.tfich{background:var(--s3);color:var(--t3);}
+.type-pill.tnote{background:var(--s3);color:var(--t3);}
 /* Search bar */
 .search-wrap{
   display:flex;align-items:center;gap:6px;
@@ -240,9 +240,9 @@ html,body{height:100%;overflow:hidden;font-family:var(--f);background:var(--bg);
   width:32px;height:32px;border-radius:8px;
   display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;
 }
-.viewer-ico.tweb{background:rgba(12,166,120,.1);color:var(--cweb);}
-.viewer-ico.tfich{background:rgba(139,92,246,.1);color:var(--cfile);}
-.viewer-ico.tnote{background:rgba(245,158,11,.12);color:#b45309;}
+.viewer-ico.tweb{background:var(--s3);color:var(--t3);}
+.viewer-ico.tfich{background:var(--s3);color:var(--t3);}
+.viewer-ico.tnote{background:var(--s3);color:var(--t3);}
 .viewer-title{font-size:15px;font-weight:600;color:var(--t1);line-height:1.3;flex:1;}
 .viewer-body{padding:16px 18px;overflow-y:auto;flex:1;display:flex;flex-direction:column;gap:12px;}
 .viewer-meta{display:flex;flex-wrap:wrap;gap:8px;align-items:center;}
@@ -391,6 +391,11 @@ html,body{height:100%;overflow:hidden;font-family:var(--f);background:var(--bg);
 
 /* ── MINI SECTION (knowledge panel in dashboard) ── */
 .mini-type-tabs{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:10px}
+.cat-tag{
+  display:inline-block;font-size:10.5px;font-weight:500;
+  padding:2px 8px;border-radius:20px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:110px;
+}
 /* Sidebar sub-folders */
 .sb-folders-sub{overflow:hidden;transition:max-height .2s ease;max-height:0;}
 .sb-folders-sub.open{max-height:600px;}
@@ -638,10 +643,13 @@ function renderCatGroup(cat, ki, container){
   const isExpanded=S.expandedCat===cat.id;
   const catEl=document.createElement('div');
   catEl.className='sb-cat'+(S.fCat===cat.id?' active':'');
+  // Couleur texte contrastée selon luminosité du fond
+  const col=cat.couleur||'#888';
+  const lum=(()=>{ const h=col.replace('#',''); const r=parseInt(h.slice(0,2),16)/255,g=parseInt(h.slice(2,4),16)/255,b=parseInt(h.slice(4,6),16)/255; return .2126*r+.7152*g+.0722*b; })();
+  const txtCol=lum>0.45?'#1a1a1a':'#ffffff';
   catEl.innerHTML=`
-    <span class="dot" style="background:${cat.couleur||'#444'}"></span>
-    <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${eh(cat.nom)}</span>
-    <span style="font-size:10px;font-family:var(--fm);color:var(--t3);margin-right:4px">${n}</span>
+    <span class="cat-tag" style="background:${col};color:${txtCol}">${eh(cat.nom)}</span>
+    <span style="font-size:10px;font-family:var(--fm);color:var(--t3);margin-left:auto;margin-right:4px">${n}</span>
     ${catDossiers.length?`<svg class="sb-cat-chevron ${isExpanded?'open':''}" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>`:''}`;
   catEl.onclick=()=>selCat(cat.id);
   container.appendChild(catEl);
