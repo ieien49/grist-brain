@@ -253,7 +253,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--f);background:var(--bg);
   display:flex;gap:7px;justify-content:flex-end;
 }
 .col-name{width:35%}
-.col-type{width:90px}
+.col-type{width:36px;padding-right:2px!important}
 .col-dos{width:18%}
 .col-tags{width:20%}
 .col-desc{width:auto}
@@ -697,7 +697,7 @@ function renderTopbar(){
   const searchBar=`<div class="search-wrap">
     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="color:var(--t3);flex-shrink:0"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
     <input id="search-input" placeholder="Rechercher…" value="${eh(S.fSearch)}" oninput="setF('fSearch',this.value)" onkeydown="if(event.key==='Escape'){setF('fSearch','');this.value=''}">
-    ${S.fSearch?`<button class="search-clear" onclick="setF('fSearch','');document.getElementById('search-input').value=''" title="Effacer"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>`:''}
+    <button id="search-clear-btn" class="search-clear" title="Effacer" style="display:${S.fSearch?'flex':'none'}" onclick="setF('fSearch','');document.getElementById('search-input').value=''"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
   </div>`;
   if(S.view==='knowledge'){
     el.innerHTML=searchBar+`
@@ -710,17 +710,30 @@ function renderTopbar(){
     <div class="flt"><select onchange="setF('fDossier',this.value)"><option value="all">Tous les dossiers</option>${S.dossiers.map(d=>`<option value="${d.id}" ${S.fDossier==d.id?'selected':''}>${eh(d.nom)}</option>`).join('')}</select></div>`;
   }
 }
-function setF(k,v){ S[k]=v; renderAll(); }
-
-/* RENDER ALL */
-function renderAll(){
+function setF(k,v){
+  S[k]=v;
+  if(k==='fSearch'){
+    // Met à jour uniquement le contenu sans re-créer l'input (évite la perte de focus)
+    const clr=document.getElementById('search-clear-btn');
+    if(clr) clr.style.display=v?'flex':'none';
+    renderContent();
+  } else {
+    renderAll();
+  }
+}
+function renderContent(){
   if(!gReady) return;
-  renderSidebar(); renderTopbar();
   const c=document.getElementById('content');
   c.style.overflow='hidden'; c.style.padding='0';
   if(S.view==='dashboard') renderDashboard(c);
   else if(S.view==='knowledge'){ c.style.overflow='auto'; c.style.padding='20px'; renderKnowledge(c); }
   else{ c.style.overflow='auto'; c.style.padding='20px'; renderTasks(c); }
+}
+
+/* RENDER ALL */
+function renderAll(){
+  if(!gReady) return;
+  renderSidebar(); renderTopbar(); renderContent();
 }
 
 /* DASHBOARD */
@@ -741,7 +754,7 @@ function renderDashboard(c){
       <div class="panel-header">${IC.note}<span class="panel-title">Connaissances <span style="font-weight:400;color:var(--t3)">(${ki.length})</span></span>
         <div class="mini-type-tabs">${['all','web','fichier','note'].map(t=>`<span class="mtt ${S.dashKType===t?'active':''}" onclick="setDashKType('${t}')">${t==='all'?'Tout':t[0].toUpperCase()+t.slice(1)}</span>`).join('')}</div>
         <button class="ibt" onclick="openAddModal('knowledge')">${IC.plus}</button></div>
-      <div class="panel-body">${recentK.length===0?`<div class="empty"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/></svg><p>Aucune connaissance</p></div>`:`<table class="ktable" style="font-size:12px"><thead><tr><th class="col-type">Type</th><th class="col-name">Nom</th><th class="col-dos">Dossier</th><th class="col-tags">Tags</th><th class="col-act"></th></tr></thead><tbody>${recentK.map(i=>kRowHtml(i)).join('')}</tbody></table>`}</div>
+      <div class="panel-body">${recentK.length===0?`<div class="empty"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/></svg><p>Aucune connaissance</p></div>`:`<table class="ktable" style="font-size:12px"><tbody>${recentK.map(i=>kRowHtml(i)).join('')}</tbody></table>`}</div>
     </div>
     <div class="dash-panel">
       <div class="panel-header">${IC.action}<span class="panel-title">Tâches <span style="font-weight:400;color:var(--t3)">(${undone} actives)</span></span>
@@ -781,21 +794,13 @@ function renderKnowledge(c){
   else if(S.groupBy==='type'){ const m={}; items.forEach(i=>{ const k=i.type||'autre'; if(!m[k]) m[k]={label:k[0].toUpperCase()+k.slice(1),color:TCOL[k]||'#666',items:[]}; m[k].items.push(i); }); groups=Object.values(m); }
   else if(S.groupBy==='categorie'){ const m={}; items.forEach(i=>{ const d=getDos(i.dossier); const ct=d?getCat(d.categorie):null; const k=ct?ct.id:'__'; if(!m[k]) m[k]={label:ct?ct.nom:'Sans catégorie',color:ct?ct.couleur:'#444',items:[]}; m[k].items.push(i); }); groups=Object.values(m).sort((a,b)=>a.label.localeCompare(b.label)); }
   else{ groups=[{label:null,color:null,items}]; }
-  const thead=`<thead><tr>
-    <th class="col-type">Type</th>
-    <th class="col-name">Nom</th>
-    <th class="col-dos">Dossier</th>
-    <th class="col-tags">Tags</th>
-    <th class="col-desc">Description</th>
-    <th class="col-act"></th>
-  </tr></thead>`;
   if(S.groupBy==='none'){
-    c.innerHTML=`<table class="ktable">${thead}<tbody>${items.map(i=>kRowHtml(i)).join('')}</tbody></table>`;
+    c.innerHTML=`<table class="ktable"><tbody>${items.map(i=>kRowHtml(i)).join('')}</tbody></table>`;
   } else {
     c.innerHTML=groups.map(g=>`
       <div class="k-group">
         ${g.label!==null?`<div class="g-hdr">${g.color?`<span class="dot" style="background:${g.color}"></span>`:''}<span class="g-title">${eh(g.label)}</span><span class="g-badge">${g.items.length}</span></div>`:''}
-        <table class="ktable">${thead}<tbody>${g.items.map(i=>kRowHtml(i)).join('')}</tbody></table>
+        <table class="ktable"><tbody>${g.items.map(i=>kRowHtml(i)).join('')}</tbody></table>
       </div>`).join('');
   }
 }
@@ -808,7 +813,7 @@ function kRowHtml(item){
   const desc=item.description?eh(item.description).replace(/\n/g,' '):'';
   return `<tr class="krow" onclick="openViewer(${item.id})">
     <td class="col-type"><span class="type-pill ${tc}" title="${item.type}">${IC[item.type]||''}</span></td>
-    <td class="col-name" style="font-weight:500">${eh(item.nom||'Sans titre')}${hasLink?` <a href="${ea(item.lien)}" target="_blank" onclick="event.stopPropagation()" style="color:var(--cweb);text-decoration:none;font-size:10px;margin-left:4px">↗</a>`:''}</td>
+    <td class="col-name" style="font-weight:500;padding-left:4px">${eh(item.nom||'Sans titre')}${hasLink?` <a href="${ea(item.lien)}" target="_blank" onclick="event.stopPropagation()" style="color:var(--cweb);text-decoration:none;font-size:10px;margin-left:4px">↗</a>`:''}</td>
     <td class="col-dos" style="color:var(--t2);font-size:12px">${dn?eh(dn):''}</td>
     <td class="col-tags">${tags.slice(0,3).map(t=>`<span class="tag">${eh(t)}</span>`).join(' ')}</td>
     <td class="col-desc" style="color:var(--t2);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:0">${desc}</td>
