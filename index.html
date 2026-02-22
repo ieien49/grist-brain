@@ -2,6 +2,7 @@
 <html lang="fr">
 <head>
 <script src="https://docs.getgrist.com/grist-plugin-api.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.6/marked.min.js"></script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Second Cerveau</title>
@@ -247,7 +248,22 @@ html,body{height:100%;overflow:hidden;font-family:var(--f);background:var(--bg);
 .viewer-body{padding:16px 18px;overflow-y:auto;flex:1;display:flex;flex-direction:column;gap:12px;}
 .viewer-meta{display:flex;flex-wrap:wrap;gap:8px;align-items:center;}
 .viewer-badge{font-size:11px;padding:3px 8px;border-radius:6px;background:var(--s2);border:1px solid var(--b1);color:var(--t2);}
-.viewer-desc{font-size:13px;color:var(--t1);line-height:1.7;white-space:pre-wrap;}
+.viewer-desc{font-size:13px;color:var(--t1);line-height:1.7;}
+.viewer-desc h1,.viewer-desc h2,.viewer-desc h3{font-weight:600;margin:.6em 0 .3em;}
+.viewer-desc h1{font-size:16px;} .viewer-desc h2{font-size:14px;} .viewer-desc h3{font-size:13px;}
+.viewer-desc p{margin:.3em 0;}
+.viewer-desc ul,.viewer-desc ol{padding-left:1.4em;margin:.3em 0;}
+.viewer-desc li{margin:.15em 0;}
+.viewer-desc code{font-family:var(--fm);font-size:11.5px;background:var(--s3);padding:1px 5px;border-radius:4px;}
+.viewer-desc pre{background:var(--s3);border:1px solid var(--b2);border-radius:7px;padding:10px 12px;overflow-x:auto;margin:.5em 0;}
+.viewer-desc pre code{background:none;padding:0;}
+.viewer-desc blockquote{border-left:3px solid var(--b3);margin:.4em 0;padding:.2em .8em;color:var(--t2);}
+.viewer-desc a{color:var(--cweb);text-decoration:none;} .viewer-desc a:hover{text-decoration:underline;}
+.viewer-desc strong{font-weight:600;} .viewer-desc em{font-style:italic;}
+.viewer-desc table{border-collapse:collapse;font-size:12px;margin:.4em 0;width:100%;}
+.viewer-desc th,.viewer-desc td{border:1px solid var(--b2);padding:4px 8px;text-align:left;}
+.viewer-desc th{background:var(--s2);font-weight:600;}
+.md-hint{font-size:10.5px;color:var(--t3);margin-top:3px;font-weight:400;}
 .viewer-foot{
   padding:12px 18px;border-top:1px solid var(--b1);
   display:flex;gap:7px;justify-content:flex-end;
@@ -906,7 +922,11 @@ function openViewer(id){
   // Body
   let body='';
   if(hasLink) body+=`<div><a href="${ea(item.lien)}" target="_blank" style="color:var(--cweb);font-size:12.5px;display:inline-flex;align-items:center;gap:5px;word-break:break-all">${IC.link} ${eh(item.lien)}</a></div>`;
-  if(item.description) body+=`<div class="viewer-desc">${eh(item.description)}</div>`;
+  if(item.description){
+    const isNote=item.type==='note';
+    const descHtml=(isNote&&typeof marked!=='undefined')?marked.parse(item.description):eh(item.description).replace(/\n/g,'<br>');
+    body+=`<div class="viewer-desc">${descHtml}</div>`;
+  }
   if(tags.length) body+=`<div class="viewer-meta">${tags.map(t=>`<span class="viewer-badge">${eh(t)}</span>`).join('')}</div>`;
   if(!body) body=`<div style="color:var(--t3);font-size:12px;padding:8px 0">Aucun détail supplémentaire.</div>`;
   document.getElementById('viewer-body').innerHTML=body;
@@ -945,7 +965,7 @@ function renderModal(){
   let h='';
   if(!isTask) h+=`<div class="fg"><label class="fl">Type</label><div class="type-sel">${['note','web'].map(tp=>`<div class="topt ${t===tp?'active':''}" onclick="setMType('${tp}')">${IC[tp]} ${tp[0].toUpperCase()+tp.slice(1)}</div>`).join('')}</div></div>`;
   h+=`<div class="fg"><label class="fl">Nom *</label><input class="fi" id="f-nom" placeholder="Titre" value="${ea(item.nom||'')}"></div>`;
-  if(!isTask) h+=`<div class="fg"><label class="fl">Description</label><textarea class="fta" id="f-desc" placeholder="Description…">${eh(item.description||'')}</textarea></div>`;
+  if(!isTask) h+=`<div class="fg"><label class="fl">Description${t==='note'?'&ensp;<span class="md-hint">Markdown support&eacute;</span>':''}</label><textarea class="fta" id="f-desc" placeholder="${t==='note'?'Description… (Markdown: **gras**, *italique*, # titre, - liste)':'Description…'}">${eh(item.description||'')}</textarea></div>`;
   if(t==='web') h+=`<div class="fg"><label class="fl">URL</label><input class="fi" id="f-lien" type="url" placeholder="https://…" value="${ea(item.lien||'')}"></div>`;
   if(isTask) h+=`<div class="frow"><div class="fg"><label class="fl">Priorité</label><select class="fs" id="f-prio">${['','Critique','Haute','Moyenne','Basse'].map(p=>`<option value="${p}" ${item.priorite===p?'selected':''}>${p||'—'}</option>`).join('')}</select></div><div class="fg"><label class="fl">Échéance</label><input class="fi" id="f-ech" type="date" value="${toDateI(item.echeance)}"></div></div><div class="fg"><label class="fl" style="display:flex;align-items:center;gap:7px;cursor:pointer"><input type="checkbox" id="f-done" ${item.termine?'checked':''} style="width:13px;height:13px;accent-color:var(--t1)"> Terminée</label></div>`;
   // Catégorie par défaut : celle du dossier existant (édition) ou Inbox (ajout)
