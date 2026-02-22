@@ -701,7 +701,7 @@ function renderTopbar(){
   </div>`;
   if(S.view==='knowledge'){
     el.innerHTML=searchBar+`
-    <div class="seg">${['all','web','fichier','note'].map(t=>`<button class="seg-b ${S.fType===t?'active':''}" onclick="setF('fType','${t}')">${t==='all'?'Tout':t[0].toUpperCase()+t.slice(1)}</button>`).join('')}</div>
+    <div class="seg">${['all','web','note'].map(t=>`<button class="seg-b ${S.fType===t?'active':''}" onclick="setF('fType','${t}')">${t==='all'?'Tout':t[0].toUpperCase()+t.slice(1)}</button>`).join('')}</div>
     <div class="flt"><select onchange="setF('fDossier',this.value)"><option value="all">Tous les dossiers</option>${S.dossiers.map(d=>`<option value="${d.id}" ${S.fDossier==d.id?'selected':''}>${eh(d.nom)}</option>`).join('')}</select></div>
     <div class="flt"><select onchange="setF('groupBy',this.value)"><option value="dossier" ${S.groupBy==='dossier'?'selected':''}>Grouper : Dossier</option><option value="type" ${S.groupBy==='type'?'selected':''}>Grouper : Type</option><option value="categorie" ${S.groupBy==='categorie'?'selected':''}>Grouper : Catégorie</option><option value="none" ${S.groupBy==='none'?'selected':''}>Sans groupe</option></select></div>`;
   } else {
@@ -905,6 +905,12 @@ function openEditModal(id){
 function closeModal(){ document.getElementById('ov').classList.remove('open'); }
 function handleOvClick(e){ if(e.target===document.getElementById('ov')) closeModal(); }
 function setMType(tp){ S.mType=tp; renderModal(); }
+function onModalCatChange(catId){
+  // Refiltre le select dossier sans re-rendre toute la modale
+  const dos=document.getElementById('f-dos'); if(!dos) return;
+  const filtered=catId?S.dossiers.filter(d=>String(d.categorie)===catId):S.dossiers;
+  dos.innerHTML='<option value="">— Sans dossier —</option>'+filtered.map(d=>`<option value="${d.id}">${eh(d.nom)}</option>`).join('');
+}
 
 function renderModal(){
   const isEdit=S.modalMode==='edit';
@@ -912,14 +918,35 @@ function renderModal(){
   const t=S.mType; const isTask=t==='action';
   document.getElementById('m-title').innerHTML=`<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="${TCOL[t]||'currentColor'}" stroke-width="2">${(IC[t]||'').replace(/<svg[^>]*>|<\/svg>/g,'')}</svg>${isEdit?'Modifier':'Ajouter'} ${isTask?'une tâche':'une connaissance'}`;
   let h='';
-  if(!isTask) h+=`<div class="fg"><label class="fl">Type</label><div class="type-sel">${['note','web','fichier'].map(tp=>`<div class="topt ${t===tp?'active':''}" onclick="setMType('${tp}')">${IC[tp]} ${tp[0].toUpperCase()+tp.slice(1)}</div>`).join('')}</div></div>`;
+  if(!isTask) h+=`<div class="fg"><label class="fl">Type</label><div class="type-sel">${['note','web'].map(tp=>`<div class="topt ${t===tp?'active':''}" onclick="setMType('${tp}')">${IC[tp]} ${tp[0].toUpperCase()+tp.slice(1)}</div>`).join('')}</div></div>`;
   h+=`<div class="fg"><label class="fl">Nom *</label><input class="fi" id="f-nom" placeholder="Titre" value="${ea(item.nom||'')}"></div>`;
   if(!isTask) h+=`<div class="fg"><label class="fl">Description</label><textarea class="fta" id="f-desc" placeholder="Description…">${eh(item.description||'')}</textarea></div>`;
   if(t==='web') h+=`<div class="fg"><label class="fl">URL</label><input class="fi" id="f-lien" type="url" placeholder="https://…" value="${ea(item.lien||'')}"></div>`;
   if(isTask) h+=`<div class="frow"><div class="fg"><label class="fl">Priorité</label><select class="fs" id="f-prio">${['','Critique','Haute','Moyenne','Basse'].map(p=>`<option value="${p}" ${item.priorite===p?'selected':''}>${p||'—'}</option>`).join('')}</select></div><div class="fg"><label class="fl">Échéance</label><input class="fi" id="f-ech" type="date" value="${toDateI(item.echeance)}"></div></div><div class="fg"><label class="fl" style="display:flex;align-items:center;gap:7px;cursor:pointer"><input type="checkbox" id="f-done" ${item.termine?'checked':''} style="width:13px;height:13px;accent-color:var(--t1)"> Terminée</label></div>`;
+  // Catégorie par défaut : celle du dossier existant (édition) ou Inbox (ajout)
+  const inboxCatId=S.cats.find(c=>c.nom==='Inbox'||c.type==='Inbox')?.id||'';
   const inboxDosId=S.dossiers.find(d=>d.nom==='Inbox')?.id;
-  const defaultDos=isEdit?item.dossier:(inboxDosId||'');
-  h+=`<div class="fg"><label class="fl">Dossier</label><select class="fs" id="f-dos"><option value="">— Sans dossier —</option>${S.dossiers.map(d=>`<option value="${d.id}" ${d.id==defaultDos?'selected':''}>${eh(d.nom)}</option>`).join('')}</select></div>`;
+  let defaultCat='', defaultDos='';
+  if(isEdit){
+    const existDos=S.dossiers.find(d=>d.id==item.dossier);
+    defaultCat=existDos?String(existDos.categorie):'';
+    defaultDos=item.dossier?String(item.dossier):'';
+  } else {
+    defaultCat=String(inboxCatId);
+    defaultDos=inboxDosId?String(inboxDosId):'';
+  }
+  // Dossiers filtrés selon catégorie sélectionnée
+  const dosForCat=defaultCat?S.dossiers.filter(d=>String(d.categorie)===defaultCat):S.dossiers;
+  h+=`<div class="fg"><label class="fl">Catégorie</label>
+    <select class="fs" id="f-cat" onchange="onModalCatChange(this.value)">
+      <option value="">— Toutes —</option>
+      ${S.cats.map(c=>`<option value="${c.id}" ${String(c.id)===defaultCat?'selected':''}>${eh(c.nom)}</option>`).join('')}
+    </select></div>`;
+  h+=`<div class="fg"><label class="fl">Dossier</label>
+    <select class="fs" id="f-dos">
+      <option value="">— Sans dossier —</option>
+      ${dosForCat.map(d=>`<option value="${d.id}" ${String(d.id)===defaultDos?'selected':''}>${eh(d.nom)}</option>`).join('')}
+    </select></div>`;
   if(!isTask) h+=`<div class="fg"><label class="fl">Tags (virgule)</label><input class="fi" id="f-tags" placeholder="tag1, tag2" value="${ea(item.tags||'')}"></div>`;
   document.getElementById('m-body').innerHTML=h;
 }
